@@ -1,0 +1,34 @@
+name: daily-config
+
+on:
+  schedule:
+    # 每天北京时间 06:00 跑一次
+    - cron: '0 22 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Aggregate sources
+        run: python scripts/fetch.py
+      - name: Copy to root
+        run: cp out/config.json config.json
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add config.json
+          if ! git diff --cached --quiet; then
+            git commit -m "daily update $(date -u +%F)"
+            git push
+          else
+            echo "no changes"
+          fi
