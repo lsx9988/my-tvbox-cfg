@@ -5,6 +5,11 @@ on:
     # 北京时间每天 03:00（UTC 19:00）
     - cron: '0 19 * * *'
   workflow_dispatch:
+    inputs:
+      force_live:
+        description: '强制刷新直播源（平时只有北京时间周一自动刷新）'
+        type: boolean
+        default: false
 
 jobs:
   update:
@@ -16,15 +21,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: 判断今天是否刷新直播源
+        id: gate
+        run: |
+          BJ_WEEK=$(TZ=Asia/Shanghai date +%u)
+          FORCE="${{ github.event.inputs.force_live }}"
+          if [ "$FORCE" = "true" ] || [ "$BJ_WEEK" = "1" ]; then
+            echo "refresh=1" >> "$GITHUB_OUTPUT"
+            echo "今天刷新直播源（北京周${BJ_WEEK}）"
+          else
+            echo "refresh=0" >> "$GITHUB_OUTPUT"
+            echo "今天不刷新直播源（北京周${BJ_WEEK}），沿用现有 cctv_live.txt"
+          fi
       - name: Install deps
         run: pip install requests
       - name: Run update
+        env:
+          REFRESH_LIVE: ${{ steps.gate.outputs.refresh }}
         run: python scripts/update.py
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add output/ config.json README.md
+          # -A 才能把脚本删掉的旧文件（如 live_intl.txt、旧 tvbox.json）一并提交
+          git add -A output/ README.md
           git diff --staged --quiet || git commit -m "daily update $(date -u +%Y-%m-%d)"
           git push
       # jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，主动清理，
@@ -32,7 +52,7 @@ jobs:
       - name: Purge jsDelivr cache
         if: always()
         run: |
-          for f in output/config.json output/tvbox.json output/tvbox_new.json output/sites.json output/live_intl.txt; do
+          for f in output/tvbox_new.json output/sites.json output/lives.json output/cctv_live.txt; do
             curl -sS --max-time 20 "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$f" || true
             echo "purged $f"
           done
