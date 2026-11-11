@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-11-11 10:05:09",
+  "updated_at": "2026-11-11 13:57:22",
   "sources": [
     {
       "id": "wangerxiao",
       "name": "王二小",
       "ok": true,
       "cached": false,
-      "used_url": "https://9280.kstore.vip/newwex.json"
+      "used_url": "https://d.kstore.dev/download/9280/wex.json"
     },
     {
       "id": "laoliubei",
@@ -27,7 +27,7 @@
       "name": "讴歌",
       "ok": false,
       "cached": false,
-      "error": "409 Client Error: Conflict for url: http://xn--dkw0c.v.nxog.top/m/"
+      "error": "403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog.top/m/"
     },
     {
       "id": "4k",
