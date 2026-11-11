@@ -27,3 +27,12 @@ jobs:
           git add output/ config.json README.md
           git diff --staged --quiet || git commit -m "daily update $(date -u +%Y-%m-%d)"
           git push
+      # jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，主动清理，
+      # 避免手机端长时间拉到旧配置
+      - name: Purge jsDelivr cache
+        if: always()
+        run: |
+          for f in output/config.json output/tvbox.json output/live_intl.txt; do
+            curl -sS --max-time 20 "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$f" || true
+            echo "purged $f"
+          done
