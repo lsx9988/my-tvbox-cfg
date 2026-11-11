@@ -27,7 +27,10 @@ except ImportError:
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(ROOT, "config", "sources.json")
 OUTPUT_DIR = os.path.join(ROOT, "output")
+# 单源干净副本放子目录，避免把 output 根目录弄得像垃圾场
+SOURCES_DIR = os.path.join(OUTPUT_DIR, "_sources")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(SOURCES_DIR, exist_ok=True)
 
 USER_AGENT = "Mozilla/5.0"
 TIMEOUT = 15
@@ -486,8 +489,8 @@ def main():
         data = normalize_types(data)
         print(f"[{sid}] 成功，站点 {len(data.get('sites', []))}，修 ext {fixed_n}")
 
-        # 单源落盘
-        src_path = os.path.join(OUTPUT_DIR, f"{sid}.json")
+        # 单源落盘（放 _sources/ 子目录，仅用于排错，主功能不依赖）
+        src_path = os.path.join(SOURCES_DIR, f"{sid}.json")
         with open(src_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
 
@@ -514,16 +517,13 @@ def main():
                 print("   %s.%s -> %s" % (f, k, c))
             sys.exit(1)
 
-        merged_path = os.path.join(OUTPUT_DIR, "config.json")
-        with open(merged_path, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
-        # tvbox.json：相同内容，换一个文件名作为主入口。
-        # 原因：jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，
-        # 用新文件名可以让 CDN 缓存键立即刷新，避免用户长时间拉到旧配置。
+        # 主入口：tvbox.json（output 根目录只保留这一个聚合文件，避免冗余）
+        # 历史原因：jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，
+        # 用独立文件名可以让 CDN 缓存键立即刷新。
         entry_path = os.path.join(OUTPUT_DIR, "tvbox.json")
         with open(entry_path, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
-        # 根目录也放一份（FongMi 直接用）
+        # 仓库根目录也放一份（历史兼容，FongMi 直接填根路径时可用）
         root_path = os.path.join(ROOT, "config.json")
         with open(root_path, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
