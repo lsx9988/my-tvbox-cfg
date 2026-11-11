@@ -10,6 +10,11 @@ on:
         description: '强制刷新直播源（平时只有北京时间周一自动刷新）'
         type: boolean
         default: false
+  # 改脚本或改本 workflow 后自动跑一次，省得手动点
+  push:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/daily.yml'
 
 jobs:
   update:
@@ -26,9 +31,10 @@ jobs:
         run: |
           BJ_WEEK=$(TZ=Asia/Shanghai date +%u)
           FORCE="${{ github.event.inputs.force_live }}"
-          if [ "$FORCE" = "true" ] || [ "$BJ_WEEK" = "1" ]; then
+          EVENT="${{ github.event_name }}"
+          if [ "$FORCE" = "true" ] || [ "$BJ_WEEK" = "1" ] || [ "$EVENT" = "push" ]; then
             echo "refresh=1" >> "$GITHUB_OUTPUT"
-            echo "今天刷新直播源（北京周${BJ_WEEK}）"
+            echo "今天刷新直播源（触发=${EVENT} 北京周${BJ_WEEK}）"
           else
             echo "refresh=0" >> "$GITHUB_OUTPUT"
             echo "今天不刷新直播源（北京周${BJ_WEEK}），沿用现有 cctv_live.txt"
