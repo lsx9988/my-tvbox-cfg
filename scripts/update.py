@@ -833,15 +833,20 @@ def main():
     speed_map = {name: dt for name, dt in site_speed} if site_speed else {}
     site_lines = ["", "### 点播源 TOP 15（按速度排序）", "", "| 排名 | 名称 | 延迟 |", "| :---: | --- | :---: |"]
     for i, s in enumerate(merged.get("sites", [])[:15]):
-        name = s.get("name", "?")
-        dt = speed_map.get(name)
+        raw_name = s.get("name", "?")
+        # 清理名字：去掉 | 和多余前缀，避免表格错乱
+        name = raw_name.replace("|", "").replace("影视", "").replace("️", "").strip()
+        if not name:
+            name = raw_name[:10]
+        dt = speed_map.get(raw_name)
         speed_str = f"{dt}ms" if dt else "爬虫"
         site_lines.append(f"| {i+1} | {name} | {speed_str} |")
 
     # 生成直播速率表
     live_lines = ["", "### 直播源（按速度排序）", "", "| 排名 | 名称 |", "| :---: | --- |"]
     for i, l in enumerate(merged.get("lives", [])):
-        live_lines.append(f"| {i+1} | {l.get('name', '?')} |")
+        lname = l.get("name", "?").replace("|", "").strip()
+        live_lines.append(f"| {i+1} | {lname} |")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
