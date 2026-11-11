@@ -428,27 +428,45 @@ def _site_alive(api):
         return False
 
 
+# 网盘点播关键词：用户不用网盘资源，自动剔除
+PAN_KWS = (
+    "网盘", "云盘", "盘搜", "盘se", "盘迷", "爱盘", "全盘", "我的盘",
+    "115", "夸克", "quark", "alist", "mypan", "pansou", "panse",
+    "阿里云盘", "百度网盘", "uc网盘",
+)
+
+
+def is_pan_site(s):
+    text = ((s.get("name") or "") + " " + (s.get("key") or "")).lower()
+    return any(k.lower() in text for k in PAN_KWS)
+
+
 def clean_sites(sites, probe=True):
-    """清洗点播站点：只对 type=1 且 api 是 http URL 的做活性探测，剔掉死的。
-    JS 爬虫类（type=3，api 是 csp_/drpy_/./ 这种）不探测，因为 api 不是 URL。"""
+    """清洗点播站点：剔掉网盘类 + 死 API。JS 爬虫类只剔网盘，不做活性探测。"""
     out = []
-    dropped = []
+    dropped_pan = []
+    dropped_dead = []
     for s in sites or []:
         if not isinstance(s, dict):
             continue
+        name = s.get("name", "?")
         api = (s.get("api") or "").strip()
         stype = s.get("type", 0)
-        # 只对直连 API 站做探测
+        # 1) 先剔网盘类
+        if is_pan_site(s):
+            dropped_pan.append(name)
+            continue
+        # 2) 再测直连 API
         if probe and stype == 1 and api.startswith("http"):
             if not _site_alive(api):
-                dropped.append(s.get("name", api[:40]))
+                dropped_dead.append(name)
                 continue
         out.append(s)
-    print(f"[sites] 清洗：{len(sites)} -> {len(out)}（剔死 API {len(dropped)}）")
-    for n in dropped[:20]:
-        print(f"   - {n}")
-    if len(dropped) > 20:
-        print(f"   ... 还有 {len(dropped)-20} 个")
+    print(f"[sites] 清洗：{len(sites)} -> {len(out)}（剔网盘 {len(dropped_pan)}，剔死 API {len(dropped_dead)}）")
+    for n in dropped_pan[:20]:
+        print(f"   - 网盘: {n}")
+    for n in dropped_dead[:20]:
+        print(f"   - 死链: {n}")
     return out
 
 
