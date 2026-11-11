@@ -35,11 +35,11 @@ https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json
 ## 当前聚合状态
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 14:12:10（北京时间） · 成功 **5/8** 个源
+> 🔄 最近更新：2026-11-11 13:46:58（北京时间） · 成功 **5/8** 个源
 
 | 源 | 状态 | 地址 |
 | --- | --- | --- |
-| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
+| 王二小 | ✅ | `https://9280.kstore.vip/newwex.json` |
 | 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
 | 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
 | 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
