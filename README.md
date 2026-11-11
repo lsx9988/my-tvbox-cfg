@@ -4,8 +4,8 @@
 > 每天凌晨 3 点自动抓取公开源、测速排序、剔死链、发布
 
 ![Update](https://img.shields.io/badge/update-daily%2003:00-blue?logo=githubactions)
-![Sites](https://img.shields.io/badge/sites-462-green)
-![Live](https://img.shields.io/badge/live-8%20%E6%BA%90%20%282700+%E5%8F%B0%29-orange)
+![Sites](https://img.shields.io/badge/sites-445-green)
+![Live](https://img.shields.io/badge/live-59%20%E5%8F%B0-orange)
 
 ---
 

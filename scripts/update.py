@@ -1115,6 +1115,12 @@ def main():
         else:
             # 没有标记，追加到末尾
             readme += "\n\n" + block
+        # 顶部徽章跟着真实数据走，别留写死的旧数字
+        prof2 = globals().get("_CCTV_PROFILE")
+        key = f"{site_count} 站"
+        live_n = (prof2[0] + prof2[1]) if prof2 else live_count
+        readme = re.sub(r"badge/sites-[^)]*", "badge/sites-" + urllib.parse.quote(key) + "-green", readme)
+        readme = re.sub(r"badge/live-[^)]*", "badge/live-" + urllib.parse.quote(str(live_n) + " 台") + "-orange", readme)
         with open(readme_path, "w", encoding="utf-8") as f:
             f.write(readme)
     else:
