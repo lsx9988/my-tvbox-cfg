@@ -1,0 +1,24 @@
+{
+  "urls": [
+    {
+      "name": "王二小",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/wangerxiao.json"
+    },
+    {
+      "name": "老刘备",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/laoliubei.json"
+    },
+    {
+      "name": "小马",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/xiaoma.json"
+    },
+    {
+      "name": "4K小盒子",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/4k.json"
+    },
+    {
+      "name": "小盒子单仓",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/xiaohezi.json"
+    }
+  ]
+}

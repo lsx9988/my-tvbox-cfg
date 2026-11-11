@@ -1,0 +1,61 @@
+{
+  "updated_at": "2026-11-11 10:05:09",
+  "sources": [
+    {
+      "id": "wangerxiao",
+      "name": "王二小",
+      "ok": true,
+      "cached": false,
+      "used_url": "https://9280.kstore.vip/newwex.json"
+    },
+    {
+      "id": "laoliubei",
+      "name": "老刘备",
+      "ok": true,
+      "cached": false,
+      "used_url": "https://raw.liucn.cc/box/m.json"
+    },
+    {
+      "id": "xiaoma",
+      "name": "小马",
+      "ok": true,
+      "cached": false,
+      "used_url": "https://szyyds.cn/tv/x.json"
+    },
+    {
+      "id": "ouge",
+      "name": "讴歌",
+      "ok": false,
+      "cached": false,
+      "error": "409 Client Error: Conflict for url: http://xn--dkw0c.v.nxog.top/m/"
+    },
+    {
+      "id": "4k",
+      "name": "4K小盒子",
+      "ok": true,
+      "cached": false,
+      "used_url": "http://xhztv.top/4k.json"
+    },
+    {
+      "id": "xiaohezi",
+      "name": "小盒子单仓",
+      "ok": true,
+      "cached": false,
+      "used_url": "http://xhztv.top/xhz"
+    },
+    {
+      "id": "shiguang",
+      "name": "拾光多仓",
+      "ok": false,
+      "cached": false,
+      "error": "不是 TVBox 配置（缺 sites/spiders/lives）"
+    },
+    {
+      "id": "tinghao",
+      "name": "挺好分享多仓",
+      "ok": false,
+      "cached": false,
+      "error": "不是 TVBox 配置（缺 sites/spiders/lives）"
+    }
+  ]
+}
