@@ -160,8 +160,6 @@ CGNTV Chinese (1080p),https://d3e05csss9c272.cloudfront.net/out/v1/f0bf71c575814
 Cinemax Asia Taiwan (1080p),http://125.227.210.55:1001/VideoInput/play.ts
 Dali TV (720p),http://www.dalitv.com.tw:4568/live/dali/index.m3u8
 Discovery Asia Taiwan (1080p),http://125.227.210.55:1004/VideoInput/play.ts
-Good 2 (720p),https://live.streamingfast.net/osmflivech2.m3u8
-Good TV (Taiwan) (720p) [Not 24/7],https://live.streamingfast.net/osmflivech1.m3u8
 Hakka TV,https://h5cul1yar48um3t.wcetv.com/hls/hakkatv.m3u8
 HBO Asia Taiwan (1080p),http://125.227.210.55:1003/VideoInput/play.ts
 NTD TV Asia-Pacific,https://live.ntdtv.com/aplive200/playlist.m3u8
@@ -292,6 +290,7 @@ America's Test Kitchen (720p),https://jmp2.uk/plu-5e84f54a82f05300080e6746.m3u8
 America's Voice (720p),https://content.uplynk.com/channel/26bd482ffe364a1282bc3df28bd3c21f.m3u8
 America's Voice News (720p),https://jmp2.uk/plu-5e1f7da4bc7d740009831259.m3u8
 American Heroes Channel (720p),http://23.237.104.106:8080/USA_AMERICAN_HEROES/index.m3u8
+American Horrors (480p),http://107.167.7.162:8081/playlist/amhor/playlist.m3u8
 Ameritrade (1080p) [Not 24/7],https://tdameritrade-vizio.amagi.tv/playlist.m3u8
 AMG TV (1080p),https://2-fss-2.streamhoster.com/pl_138/201660-1270634-1/playlist.m3u8
 AMGA TV (720p) [Not 24/7],https://streamer1.connectto.com/AMGA_WEB_1202/playlist.m3u8
@@ -328,6 +327,7 @@ AWE Plus (720p),https://a-cdn.herringnetwork.com/affiliate/awee/playlist.m3u8
 AWE Plus KPVM-LD (484p),https://2-fss-2.streamhoster.com/pl_120/206858-4404552-1/playlist.m3u8
 AXS TV (576p),https://tvsen3.aynaott.com/P2fJzfsg/index.m3u8
 Baby Shark TV (1080p),https://newidco-babysharktv-1-us.roku.wurl.tv/playlist.m3u8
+BabyFirst (720p),https://cdn.fast.jwp.services/v1/channel/1_jB6940Ei_TvhvIHDL/manifest.m3u8
 BabyFirst Spanish (1080p),http://168.196.127.137:6001/play/a06j/index.m3u8
 Backstage (1080p),https://d2ah48mnofquik.cloudfront.net/Backstage.m3u8
 Bar Rescue,https://jmp2.uk/plu-60a3d889a5b3690008dc7fe8.m3u8
@@ -553,7 +553,6 @@ Gongyoung Home Shopping (720p),https://etv.publichs.com/live5.stream/playlist.m3
 GS My Shop (1080p),https://gstv-myshop.gsshop.com/myshop_hd/myshop_hd.stream/playlist.m3u8
 GS Shop (1080p),https://gstv-gsshop.gsshop.com/gsshop_hd/gsshop_hd.stream/playlist.m3u8
 Gugak TV (1080p),https://mgugaklive.nowcdn.co.kr/gugakvideo/gugakvideo.stream/playlist.m3u8
-Gugbang TV (1080p) [Not 24/7],http://mediaworks.dema.mil.kr:1935/live_edge/cudo.sdp/playlist.m3u8
 HLAJ-DTV (352p) [Not 24/7],https://wowza.jejumbc.com/live/tv_jejumbc/playlist.m3u8
 HLAM-DTV (720p) [Not 24/7],http://vod.mpmbc.co.kr:1935/live/encoder-tv/playlist.m3u8
 HLAN-DTV (480p) [Not 24/7],https://stream.chmbc.co.kr/TV/myStream/playlist.m3u8
@@ -566,6 +565,7 @@ HLCT-DTV (480p) [Not 24/7],https://5ee1ec6f32118.streamlock.net/live/livetv/play
 HLDH-DTV (1080p) [Not 24/7],https://vod.ikbc.co.kr/KBCTV/tv/playlist.m3u8
 HLDP-DTV (540p) [Not 24/7],https://stream.ubc.co.kr/hls/ubctvstream/index.m3u8
 HLDQ-DTV (406p) [Not 24/7],http://61.85.197.53:1935/jtv_live/myStream/playlist.m3u8
+HLDR-DTV (540p) [Not 24/7],http://1.222.207.80:1935/live/cjbtv/playlist.m3u8
 HLKJ-DTV (720p) [Not 24/7],http://123.140.197.22/stream/1/play.m3u8
 Home & Shopping (720p),https://s28.qtcdn.co.kr/media/liveM3U8/idx/518045142/enc/1860408350/playlist.m3u8
 Hyundai Home Shopping (720p),https://livejj.hyundaihmall.com:8443/live/ngrp:hmall.stream_pc/playlist.m3u8
@@ -676,10 +676,10 @@ Da Nang TV 1 (1080p) [Not 24/7],https://live.mediatech.vn/live/285b59a111d769742
 Da Nang TV2 (1080p) [Not 24/7],https://live.mediatech.vn/live/2859145290d0d7947ef88b6240123b62474/chunklist.m3u8
 Da Vinci Asia Vietnam (1080p),https://vmttv.dpdns.org/tv360?id=davinci-hd
 Dien Bien TV (1080p),https://stream.langsontv.vn/live/2855dfeccb7f49a41a2b0441b3bfeda413c/playlist.m3u8
+Dong Nai TV 3 (720p),https://dethich.pw/dongnai3/index.m3u8
 Gia Lai TV (720p),http://tldigital-17th06day-tl9648290.duckdns.org/tv.m3u8
 Ha Tinh TV (720p),https://cohauw9bgpvod.vcdn.cloud/httv1/index.m3u8
 Hmong TV Network (720p),https://livefta.malimarcdn.com/ftaedge00/cvabroadcasting.stream/playlist.m3u8
-HTV9 (720p),https://dethich.pw/htv9/index.m3u8
 Lang Son TV (720p) [Geo-blocked],https://stream.langsontv.vn/live/285c78da0c246524c90917842f8de03bd21/playlist.m3u8
 Lao SV TV (480p),https://livefta.malimarcdn.com/ftaedge00/laosvtv.stream/playlist.m3u8
 Lao-Thai TV (720p),https://livefta.malimarcdn.com/ftaedge00/laothaius.sdp/playlist.m3u8
@@ -736,7 +736,6 @@ like Gecko) Chrome/147.0.0.0 Safari/537.36" group-title="News" 4TV News (576p),h
 7S Music (576p),https://cdn.pishow.tv/ott/live/1257/master.m3u8
 7X Music (360p),https://cdn2.in/7xPunjabihls/live.m3u8
 9 Plus News (1080p),https://stream.ottlive.co.in/9plusnews/index.m3u8
-9X Jalwa (1080p),https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8
 9X Jhakaas (1080p),https://amg01281-9xmediapvtltd-9xjhakaas-samsungin-ci2cs.amagi.tv/playlist/amg01281-9xmediapvtltd-9xjhakaas-samsungin/playlist.m3u8
 9X Tashan (1080p),https://amg01281-9xmediapvtltd-9xtashan-samsungin-xz1sd.amagi.tv/playlist/amg01281-9xmediapvtltd-9xtashan-samsungin/playlist.m3u8
 10 TV (720p),https://mumbai-edge.smartplaytv.in/10TV/index.m3u8
@@ -747,6 +746,7 @@ Aadinath TV (576p),https://cdn.pishow.tv/ott/live/252/master.m3u8
 Aagaaz Times (1080p),https://live1.ottlive.co.in/aagaaztimes/index.m3u8
 Aaj Ki Khabar (1080p),https://stream.ottlive.co.in/aajkikhabar/index.m3u8
 Aaj Tak HD (1080p),https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8
+Aamar Bangla (720p),https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI/amarbanglatv.stream/playlist.m3u8
 Aaryaa TV (1080p),https://stream.ottlive.co.in/aryatvtamil/index.m3u8
 Aaseervatham TV (576p),https://mumt04.tangotv.in/m18aqlK4AASEERVATHAMTV/index.m3u8
 Aastha (576p),https://cdn.pishow.tv/ott/live/1454/master.m3u8
@@ -937,6 +937,7 @@ AIST TV (1080p),http://live2-aisttv.cdnvideo.ru/aisttv2/aisttv.sdp/playlist.m3u8
 Amedia Hit (1080p),http://stream.mcquack.net/162/index.m3u8
 Angel TV Russian (720p),https://janya-digimix.akamaized.net/vglive-sk-955415/russia/ngrp:angelrussia_all/playlist.m3u8
 Animal Planet (Russia) (1080p),http://stream.mcquack.net/114/index.m3u8
+Aris 24 (720p) [Not 24/7],http://serv25.vintera.tv:8081/test/aris/playlist.m3u8
 Arkhyz 24 (1080p),https://live.mediacdn.ru/sr1/arhis24/playlist.m3u8
 Arsenal (576p),https://stream8.cinerama.uz/1414/tracks-v1a1/mono.m3u8
 ART (Russia) (576p),http://89.104.114.24:8080/art/index.m3u8
@@ -2088,6 +2089,7 @@ like Gecko) Chrome/120.0.0.0 Safari/537.36" group-title="Movies" AMC Europe Hung
 AMC Latin America (1080p),http://15.204.246.24:8080/AMCHD/index.m3u8
 AMC Latin America Brazil (720p),http://170.83.49.66:8083/AMCHD/index.m3u8
 Amedia Hit (1080p),http://stream.mcquack.net/162/index.m3u8
+American Horrors (480p),http://107.167.7.162:8081/playlist/amhor/playlist.m3u8
 like Gecko) Chrome/83.0.4103.97 Safari/537.36" group-title="Movies" Aneflix Live (720p),https://stream-cdn-iad.vaughnsoft.net/play/live_a_neflix01.flv
 like Gecko) Chrome/149.0.0.0 Safari/537.36" group-title="Movies" Armenia Premium (720p),http://stream.mcquack.net/123/index.m3u8
 ARTFLIX Movie Classics (720p),https://amogonetworx-artflix-1-nl.samsung.wurl.tv/playlist.m3u8
@@ -2258,7 +2260,6 @@ like Gecko) Chrome/147.0.0.0 Safari/537.36" group-title="Movies" Epic Bhojpuri (
 7S Music (576p),https://cdn.pishow.tv/ott/live/1257/master.m3u8
 7X Music (360p),https://cdn2.in/7xPunjabihls/live.m3u8
 8XM,https://cdn4.mjunoon.tv:8087/streamtest/131M/chunks.m3u8
-9X Jalwa (1080p),https://wiselp.wiseplayout.com/9X_Jalwa/master.m3u8
 9X Jhakaas (1080p),https://amg01281-9xmediapvtltd-9xjhakaas-samsungin-ci2cs.amagi.tv/playlist/amg01281-9xmediapvtltd-9xjhakaas-samsungin/playlist.m3u8
 9X Tashan (1080p),https://amg01281-9xmediapvtltd-9xtashan-samsungin-xz1sd.amagi.tv/playlist/amg01281-9xmediapvtltd-9xtashan-samsungin/playlist.m3u8
 13 Festival (1080p),https://origin.dpsgo.com/ssai/event/Nftd0fM2SXasfDlRphvUsg/master.m3u8
@@ -2455,6 +2456,7 @@ Avatar: A lenda de Aang,https://jmp2.uk/plu-6759eeb1bd523200083b4f29.m3u8
 Avatar: La Leyenda de Aang,https://jmp2.uk/plu-6759ee82bd523200083b4f0f.m3u8
 Baby Shark TV (1080p),https://newidco-babysharktv-1-us.roku.wurl.tv/playlist.m3u8
 Baby Time (576p),http://178.134.1.158:8081/babytime/index.m3u8
+BabyFirst (720p),https://cdn.fast.jwp.services/v1/channel/1_jB6940Ei_TvhvIHDL/manifest.m3u8
 BabyFirst Spanish (1080p),http://168.196.127.137:6001/play/a06j/index.m3u8
 Balapan HD (1080p),https://balapantv-stream.qazcdn.com/balapantv/balapantv/playlist.m3u8
 Balapan International (1080p),https://live-3.otcnet.ru/Balapan/index.m3u8
