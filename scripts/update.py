@@ -411,21 +411,26 @@ def _live_alive(url):
 
 
 def _site_alive(api):
-    """点播 API 活性探测：HEAD 4 秒，不支持 HEAD 退到 GET stream。"""
+    """点播 API 活性探测，返回 (是否存活, 延迟毫秒)。HEAD 4 秒，不支持 HEAD 退到 GET。"""
+    import time as _t
     try:
+        t0 = _t.time()
         r = requests.head(api, timeout=4, allow_redirects=True,
                           headers={"User-Agent": USER_AGENT})
+        dt = int((_t.time() - t0) * 1000)
         if r.status_code < 400:
-            return True
+            return True, dt
         if r.status_code in (405, 501, 403):
+            t0 = _t.time()
             r2 = requests.get(api, timeout=4, stream=True, allow_redirects=True,
                               headers={"User-Agent": USER_AGENT})
+            dt = int((_t.time() - t0) * 1000)
             ok = r2.status_code < 400
             r2.close()
-            return ok
-        return False
+            return ok, dt
+        return False, 99999
     except Exception:
-        return False
+        return False, 99999
 
 
 # 网盘点播关键词：用户不用网盘资源，自动剔除
@@ -442,8 +447,9 @@ def is_pan_site(s):
 
 
 def clean_sites(sites, probe=True):
-    """清洗点播站点：剔掉网盘类 + 死 API。JS 爬虫类只剔网盘，不做活性探测。"""
-    out = []
+    """清洗点播站点：剔网盘、剔死 API、按响应延迟排序（快的排前面）。"""
+    direct = []   # (latency, site)
+    others = []   # JS 爬虫类，不探测
     dropped_pan = []
     dropped_dead = []
     for s in sites or []:
@@ -452,17 +458,26 @@ def clean_sites(sites, probe=True):
         name = s.get("name", "?")
         api = (s.get("api") or "").strip()
         stype = s.get("type", 0)
-        # 1) 先剔网盘类
         if is_pan_site(s):
             dropped_pan.append(name)
             continue
-        # 2) 再测直连 API
         if probe and stype == 1 and api.startswith("http"):
-            if not _site_alive(api):
+            ok, dt = _site_alive(api)
+            if not ok:
                 dropped_dead.append(name)
                 continue
-        out.append(s)
-    print(f"[sites] 清洗：{len(sites)} -> {len(out)}（剔网盘 {len(dropped_pan)}，剔死 API {len(dropped_dead)}）")
+            s["_latency"] = dt
+            direct.append((dt, s))
+        else:
+            others.append(s)
+    # 直连 API 按延迟升序
+    direct.sort(key=lambda x: x[0])
+    if direct:
+        print(f"   最快 5 个：{[(s.get('name'), dt) for dt, s in direct[:5]]}")
+    out = [s for _dt, s in direct] + others
+    # 清掉临时字段
+    for s in out:
+        s.pop("_latency", None)
     for n in dropped_pan[:20]:
         print(f"   - 网盘: {n}")
     for n in dropped_dead[:20]:
@@ -509,6 +524,71 @@ def clean_lives(lives, probe=True):
     for reason, n in dropped:
         print(f"   - {reason}: {n}")
     return out
+
+
+def build_elder_config(merged):
+    """长辈版配置：只保留最快的 20 个直连 API 站 + 国内直播，去掉 JS 爬虫和国际频道。"""
+    elder = {}
+    # 顶层字段继承
+    for k in ("spider", "wallpaper", "logo", "warningText"):
+        if k in merged:
+            elder[k] = merged[k]
+    elder["warningText"] = "长辈版：只保留最稳定的站和国内直播"
+    # 前 20 个直连 API（clean_sites 已按延迟排好序，type=1 的在前）
+    sites = merged.get("sites", [])
+    direct = [s for s in sites if s.get("type") == 1]
+    elder["sites"] = direct[:20]
+    # 国内直播：去掉国际频道
+    lives = [x for x in merged.get("lives", [])
+             if isinstance(x, dict) and x.get("name") != "国际频道"]
+    elder["lives"] = lives
+    elder["parses"] = merged.get("parses", [])[:5]  # 只留前 5 个解析
+    path = os.path.join(OUTPUT_DIR, "elder.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(elder, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"[elder] 长辈版：{len(elder['sites'])} 站，{len(elder['lives'])} 直播 -> output/elder.json")
+    return elder
+
+
+def build_new_releases(merged, top_n=5):
+    """从最快的几个直连 API 抓最新上线影片，汇总成 new.json。"""
+    sites = merged.get("sites", [])
+    direct = [s for s in sites if s.get("type") == 1 and (s.get("api") or "").startswith("http")]
+    movies = []
+    seen = set()
+    for s in direct[:top_n]:
+        api = s["api"]
+        sep = "&" if "?" in api else "?"
+        url = f"{api}{sep}ac=list"
+        try:
+            r = requests.get(url, timeout=6, headers={"User-Agent": USER_AGENT})
+            if r.status_code >= 400:
+                continue
+            data = r.json()
+            for item in (data.get("list") or [])[:10]:
+                name = (item.get("vod_name") or item.get("name") or "").strip()
+                if not name or name in seen:
+                    continue
+                seen.add(name)
+                t = item.get("vod_time") or ""
+                year = t[:4] if len(t) >= 4 else ""
+                movies.append({
+                    "name": name,
+                    "year": year,
+                    "type": item.get("type_name", ""),
+                    "remark": item.get("vod_remarks", ""),
+                    "time": t,
+                    "from": s.get("name", ""),
+                })
+        except Exception:
+            continue
+    movies.sort(key=lambda x: x.get("year", ""), reverse=True)
+    path = os.path.join(OUTPUT_DIR, "new.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"date": time.strftime("%Y-%m-%d"), "movies": movies[:50]},
+                  f, ensure_ascii=False, indent=2)
+    print(f"[new] 最新上线 {len(movies)} 部 -> output/new.json")
+    return movies
 
 
 def merge(fetched):
@@ -654,6 +734,11 @@ def main():
             json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
         print("聚合完成：%d 站，%d 直播（类型校验通过）" % (
             len(merged.get("sites", [])), len(merged.get("lives", []))))
+
+        # 长辈版配置（只留最快 20 个直连站 + 国内直播）
+        build_elder_config(merged)
+        # 最新上线影片
+        build_new_releases(merged)
 
         # 额外按类型拆分输出，方便在仓库里直接浏览（FongMi 仍只用 tvbox.json）
         with open(os.path.join(OUTPUT_DIR, "sites.json"), "w", encoding="utf-8") as f:
