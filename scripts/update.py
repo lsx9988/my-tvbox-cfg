@@ -343,6 +343,140 @@ SAT_TARGET = 40   # 最多保留多少个卫视
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
 
 
+
+# ============ 线路分辨率探测（保证高清线排第一） ============
+class _BitReader:
+    def __init__(self, data):
+        self.d = data
+        self.p = 0
+
+    def u1(self):
+        if self.p >= len(self.d) * 8:
+            raise ValueError("eof")
+        v = (self.d[self.p >> 3] >> (7 - (self.p & 7))) & 1
+        self.p += 1
+        return v
+
+    def u(self, n):
+        v = 0
+        for _ in range(n):
+            v = (v << 1) | self.u1()
+        return v
+
+    def ue(self):
+        z = 0
+        while self.u1() == 0:
+            z += 1
+            if z > 32:
+                raise ValueError("ue too long")
+        return (1 << z) - 1 + self.u(z)
+
+
+def _sps_wh(data):
+    """解析 H.264 SPS 里的显示宽高（已扣掉 frame cropping）。"""
+    b = _BitReader(data)
+    prof = b.u(8)
+    b.u(8)
+    b.u(8)
+    b.ue()
+    if prof in (100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135):
+        cf = b.ue()
+        if cf == 3:
+            b.u(1)
+        b.ue()
+        b.ue()
+        b.u(1)
+        if b.u1():
+            for i in range(8 if cf != 3 else 12):
+                if b.u1():
+                    last = 8
+                    nxt = 8
+                    for _ in range(16 if i < 6 else 64):
+                        if nxt:
+                            nxt = (last + b.ue() + 256) % 256
+                        if nxt:
+                            last = nxt
+    b.ue()
+    poc = b.ue()
+    if poc == 0:
+        b.ue()
+    elif poc == 1:
+        b.u(1)
+        b.ue()
+        b.ue()
+        for _ in range(b.ue()):
+            b.ue()
+    b.ue()
+    b.u(1)
+    w = b.ue() + 1
+    h = b.ue() + 1
+    fmo = b.u1()
+    if not fmo:
+        b.u1()
+    b.u1()
+    cl = cr = ct = cb = 0
+    if b.u1():
+        cl = b.ue()
+        cr = b.ue()
+        ct = b.ue()
+        cb = b.ue()
+    return (w * 16 - (cl + cr) * 2, (2 - fmo) * h * 16 - (ct + cb) * 2)
+
+
+def _stream_res(url, timeout=6):
+    """拉清单→第一个 TS 分片→解 SPS，返回 (宽,高)。失败返回 None。"""
+    H = {"User-Agent": USER_AGENT}
+    try:
+        r = requests.get(url, timeout=timeout, headers=H, verify=False)
+        if r.status_code != 200:
+            return None
+        ts = _cctv_first(r.text, url, ".ts")
+        if not ts:
+            sub = _cctv_first(r.text, url, ".m3u8")
+            if not sub:
+                return None
+            r2 = requests.get(sub, timeout=timeout, headers=H, verify=False)
+            if r2.status_code != 200:
+                return None
+            ts = _cctv_first(r2.text, sub, ".ts")
+            if not ts:
+                return None
+        buf = b""
+        tr = requests.get(ts, timeout=timeout + 4, headers=H, verify=False, stream=True)
+        if tr.status_code != 200:
+            tr.close()
+            return None
+        for c in tr.iter_content(16384):
+            buf += c
+            if len(buf) >= 8192 and re.search(rb"\x00\x00\x01\x67", buf):
+                break
+            if len(buf) > 192 * 1024:
+                break
+        tr.close()
+        for m in re.finditer(rb"\x00\x00\x00\x01\x67|\x00\x00\x01\x67", buf):
+            start = m.end()
+            nxt = buf.find(b"\x00\x00\x01", start)
+            raw = buf[start:nxt] if nxt != -1 else buf[start:start + 64]
+            clean = bytearray()
+            i = 0
+            while i < len(raw):
+                if i + 2 < len(raw) and raw[i] == 0 and raw[i + 1] == 0 and raw[i + 2] == 3:
+                    clean += raw[i:i + 2]
+                    i += 3
+                else:
+                    clean.append(raw[i])
+                    i += 1
+            try:
+                w, hh = _sps_wh(bytes(clean))
+                if 200 <= w <= 8000 and 100 <= hh <= 8000:
+                    return (w, hh)
+            except Exception:
+                continue
+    except Exception:
+        return None
+    return None
+
+
 def _sat_ok(url, timeout=6):
     """卫视线路验证：必须真抓到一个 TS 分片才算能播（只查清单文本会大量假阳性）。"""
     ok, ms, n, why = _cctv_stream_ok(url, timeout=timeout)
@@ -388,11 +522,13 @@ def build_satellite_live():
         for u in urls:
             ok, ms = _sat_ok(u)
             if ok:
-                good.append((ms, u))
+                w, hh = _stream_res(u) or (0, 0)
+                good.append((w * hh, ms, u))
         if not good:
             return None
-        good.sort()
-        return (n, good[:SAT_LINES_PER_CH])
+        # 清晰度优先，同清晰度再比延迟
+        good.sort(key=lambda x: (-x[0], x[1]))
+        return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]])
 
     with ThreadPoolExecutor(max_workers=20) as ex:
         got = [x for x in ex.map(_probe, list(by_name.items())) if x]
