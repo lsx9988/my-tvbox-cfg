@@ -36,7 +36,18 @@ https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json
 ## 当前聚合状态
 
 <!-- STATUS_START -->
-> 🔄 状态块由 `scripts/update.py` 每次运行自动覆写，手动编辑会被覆盖。
+> 🔄 最近更新：2026-11-11 14:48:31（北京时间） · 成功 **5/8** 个源
+
+| 源 | 状态 | 地址 |
+| --- | --- | --- |
+| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
+| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
+| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
+| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
+| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
+| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
+| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
 <!-- STATUS_END -->
 
 ---

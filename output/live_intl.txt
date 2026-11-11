@@ -571,6 +571,7 @@ HLDQ-DTV (406p) [Not 24/7],http://61.85.197.53:1935/jtv_live/myStream/playlist.m
 HLDR-DTV (540p) [Not 24/7],http://1.222.207.80:1935/live/cjbtv/playlist.m3u8
 HLKJ-DTV (720p) [Not 24/7],http://123.140.197.22/stream/1/play.m3u8
 Home & Shopping (720p),https://s28.qtcdn.co.kr/media/liveM3U8/idx/518045142/enc/1860408350/playlist.m3u8
+Hyundai Home Shopping (720p),https://livejj.hyundaihmall.com:8443/live/ngrp:hmall.stream_pc/playlist.m3u8
 Hyundai Home Shopping + Shop (720p),https://dtvstreaming.hyundaihmall.com/newcjp3/_definst_/newcjpstream.smil/playlist.m3u8
 KCTV (720p) [Not 24/7],http://119.77.96.184:1935/chn05/chn05/playlist.m3u8
 KTV (South Korea) (1080p),https://hlive.ktv.go.kr/live/klive_h.stream/playlist.m3u8
@@ -635,6 +636,7 @@ DLTV 12 (1080p),https://cdn-live.dltv.ac.th/dltv12.m3u8
 DLTV 13 (1080p),https://cdn-live.dltv.ac.th/dltv13.m3u8
 DLTV 14 (1080p),https://cdn-live.dltv.ac.th/dltv14.m3u8
 DLTV 15 (1080p),https://cdn-live.dltv.ac.th/dltv15.m3u8
+Dopa Channel,http://dopachannel.truegse.com/live/dopatv03.m3u8
 Good Idea TV (720p) [Not 24/7],http://stream1.ai-net.net:1935/gtv1/_definst_/smil:gtv.smil/playlist.m3u8
 Halal TV,https://vdo.plathong.net/Halaltv/Halaltv/playlist.m3u8
 Lanthung TV (576p),https://live-us1.thaimomo.com/live-as/chlantung-2/playlist.m3u8
@@ -681,13 +683,13 @@ Dien Bien TV (1080p),https://stream.langsontv.vn/live/2855dfeccb7f49a41a2b0441b3
 Gia Lai TV (720p),http://tldigital-17th06day-tl9648290.duckdns.org/tv.m3u8
 Ha Tinh TV (720p),https://cohauw9bgpvod.vcdn.cloud/httv1/index.m3u8
 Hmong TV Network (720p),https://livefta.malimarcdn.com/ftaedge00/cvabroadcasting.stream/playlist.m3u8
-HTV3 (720p),https://dethich.pw/htv3/index.m3u8
 HTV Sports (1080i),https://vmttv.dpdns.org/tv360?id=htv-the-thao
 Lang Son TV (720p) [Geo-blocked],https://stream.langsontv.vn/live/285c78da0c246524c90917842f8de03bd21/playlist.m3u8
 Lao SV TV (480p),https://livefta.malimarcdn.com/ftaedge00/laosvtv.stream/playlist.m3u8
 Lao-Thai TV (720p),https://livefta.malimarcdn.com/ftaedge00/laothaius.sdp/playlist.m3u8
 like Gecko) Chrome/144.0.0.0 Safari/537.36" group-title="General" MNB World (1080p),https://cdn4.skygo.mn/live/disk1/MNB_World/DASH-FTA/MNB_World.mpd
 Nghe An TV (720p),https://67tz1gnwrvxic.cmccdn.net/hls/NGHEANTV/03.m3u8
+ON Phim Viet (1080p),https://vmttv.dpdns.org/tv360?id=175
 ON Vie Dramas (1080i),https://freem3u.xyz/api/live/play.m3u8?vid=177
 ON Vie Giai Tri (1080p),https://freem3u.xyz/api/live/play.m3u8?vid=180
 Outdoor Channel Vietnam (1080p),https://freem3u.xyz/api/live/play.m3u8?vid=216
@@ -2463,7 +2465,6 @@ Baby Shark TV (1080p),https://newidco-babysharktv-1-us.roku.wurl.tv/playlist.m3u
 Baby Time (576p),http://178.134.1.158:8081/babytime/index.m3u8
 BabyFirst Spanish (1080p),http://168.196.127.137:6001/play/a06j/index.m3u8
 Balapan HD (1080p),https://balapantv-stream.qazcdn.com/balapantv/balapantv/playlist.m3u8
-Balapan International (1080p),https://live-3.otcnet.ru/Balapan/index.m3u8
 BeJoy.kids (1080p),https://stream.paroledivita.org/bejoy.m3u8
 Benin TV Junior (720p),https://srtblive.streamakaci.tv/ortb/ortb2-multi/playlist_dvr.m3u8
 Bob Esponja (720p),https://jmp2.uk/plu-5f1aca0b4e448e00075e7c5e.m3u8
