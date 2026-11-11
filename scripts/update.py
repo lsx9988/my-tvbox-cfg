@@ -13,6 +13,7 @@ TVBox 配置自动聚合脚本
 import datetime
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -1096,7 +1097,15 @@ def main():
             "把复杂的事拆开做，把难的事放在早上做，剩下的交给时间",
         ]
         today = time.strftime("%Y-%m-%d")
-        quote = QUOTES[hash(today) % len(QUOTES)]
+        # 随机选一句，且避开上一次用过的那句，避免连着几天撞同一句
+        _last = ""
+        try:
+            with open(os.path.join(OUTPUT_DIR, "tvbox_new.json"), "r", encoding="utf-8") as _f:
+                _last = (json.load(_f).get("notice") or "").replace("📖", "").strip()
+        except Exception:
+            _last = ""
+        _pool = [q for q in QUOTES if q.strip() != _last] or QUOTES
+        quote = random.choice(_pool)
         n_sites = len(merged.get("sites", []))
         n_lives = len(merged.get("lives", []))
         prof = globals().get("_CCTV_PROFILE")
