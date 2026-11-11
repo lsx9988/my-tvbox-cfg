@@ -993,6 +993,8 @@ a{color:#58a6ff;word-break:break-all}
 
 <a class="btn" href="__M64__">下载手机版 · 64 位 · __M64MB__ MB</a>
 <div class="meta">绝大多数安卓手机选这个</div>
+<a class="btn2" href="https://gh-proxy.com/__M64__">直连下不动？点这条国内加速线</a>
+<a class="btn2" href="https://ghfast.top/__M64__">第二条加速线（上面那条失效时用）</a>
 <a class="btn2" href="__M32__">手机版 · 32 位 · __M32MB__ MB（老机型）</a>
 <a class="btn2" href="__T64__">电视版 · 64 位 · __T64MB__ MB</a>
 <a class="btn2" href="__T32__">电视版 · 32 位 · __T32MB__ MB</a>
