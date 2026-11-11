@@ -485,15 +485,17 @@ def clean_sites(sites, probe=True):
     direct.sort(key=lambda x: x[0])
     if direct:
         print(f"   最快 5 个：{[(s.get('name'), dt) for dt, s in direct[:5]]}")
-    out = [s for _dt, s in direct] + others
-    # 清掉临时字段
-    for s in out:
-        s.pop("_latency", None)
+    out = []
+    speed_data = []  # 保存 (name, latency) 给 README 用
+    for dt, s in direct:
+        out.append(s)
+        speed_data.append((s.get("name", "?"), dt))
+    out.extend(others)
     for n in dropped_pan[:20]:
         print(f"   - 网盘: {n}")
     for n in dropped_dead[:20]:
         print(f"   - 死链: {n}")
-    return out
+    return out, speed_data
 
 
 def clean_lives(lives, probe=True):
@@ -720,7 +722,7 @@ def main():
         # 清洗直播列表
         merged["lives"] = clean_lives(merged.get("lives", []))
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
-        merged["sites"] = clean_sites(merged.get("sites", []))
+        merged["sites"], site_speed = clean_sites(merged.get("sites", []))
         # 强制壁纸：深蓝渐变暗色图，保证文字可读
         merged["wallpaper"] = "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1920&q=80"
 
@@ -753,17 +755,9 @@ def main():
                 print("   %s.%s -> %s" % (f, k, c))
             sys.exit(1)
 
-        # 主入口：tvbox.json（output 根目录）
-        entry_path = os.path.join(OUTPUT_DIR, "tvbox.json")
-        with open(entry_path, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
-        # 同时写 tvbox_new.json：jsDelivr 对旧路径有硬缓存，新路径作为手机端实际入口
+        # 主配置：tvbox_new.json（GitHub Pages 入口）
         new_path = os.path.join(OUTPUT_DIR, "tvbox_new.json")
         with open(new_path, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
-        # 仓库根目录也放一份（历史兼容，FongMi 直接填根路径时可用）
-        root_path = os.path.join(ROOT, "config.json")
-        with open(root_path, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
         print("聚合完成：%d 站，%d 直播（类型校验通过）" % (
             len(merged.get("sites", [])), len(merged.get("lives", []))))
@@ -779,7 +773,7 @@ def main():
 
         # 清理 output 目录里的旧文件，只保留白名单
         KEEP = {
-            "tvbox.json", "tvbox_new.json", "sites.json", "lives.json",
+            "tvbox_new.json", "sites.json", "lives.json",
             "live_intl.txt", "status.json", "多仓订阅.json",
         }
         removed = []
@@ -812,31 +806,63 @@ def main():
     with open(os.path.join(OUTPUT_DIR, "status.json"), "w", encoding="utf-8") as f:
         json.dump({"updated_at": updated_at, "sources": status}, f, ensure_ascii=False, indent=2)
 
-    # README 更新
+    # README 更新（完整生成：状态 + 速率表）
     ok_count = sum(1 for s in status if s["ok"])
     total = len(status)
+    site_count = len(merged.get("sites", []))
+    live_count = len(merged.get("lives", []))
     readme_path = os.path.join(ROOT, "README.md")
+
+    # 生成状态块
+    status_lines = [
+        f"> 🔄 最近更新：{updated_at}（北京时间） · 成功 **{ok_count}/{total}** 个源 · 共 **{site_count}** 站 **{live_count}** 直播",
+        "",
+        "| 源 | 状态 |",
+        "| --- | --- |",
+    ]
+    for s in status:
+        if s.get("cached"):
+            status_lines.append(f"| {s['name']} | 📦 缓存 |")
+        elif s["ok"]:
+            status_lines.append(f"| {s['name']} | ✅ |")
+        else:
+            err = (s.get("error") or "")[:40].replace("|", "/")
+            status_lines.append(f"| {s['name']} | ❌ {err} |")
+
+    # 生成点播速率表（前15，带真实速度）
+    speed_map = {name: dt for name, dt in site_speed} if site_speed else {}
+    site_lines = ["", "### 点播源 TOP 15（按速度排序）", "", "| 排名 | 名称 | 延迟 |", "| :---: | --- | :---: |"]
+    for i, s in enumerate(merged.get("sites", [])[:15]):
+        name = s.get("name", "?")
+        dt = speed_map.get(name)
+        speed_str = f"{dt}ms" if dt else "爬虫"
+        site_lines.append(f"| {i+1} | {name} | {speed_str} |")
+
+    # 生成直播速率表
+    live_lines = ["", "### 直播源（按速度排序）", "", "| 排名 | 名称 |", "| :---: | --- |"]
+    for i, l in enumerate(merged.get("lives", [])):
+        live_lines.append(f"| {i+1} | {l.get('name', '?')} |")
+
+    block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
+
+    # 读现有 README，替换状态块
     if os.path.exists(readme_path):
         with open(readme_path, "r", encoding="utf-8") as f:
             readme = f.read()
+        import re
         start = "<!-- STATUS_START -->"
         end = "<!-- STATUS_END -->"
         if start in readme and end in readme:
-            lines = [f"> 🔄 最近更新：{updated_at}（北京时间） · 成功 **{ok_count}/{total}** 个源", "",
-                     "| 源 | 状态 | 地址 |", "| --- | --- | --- |"]
-            for s in status:
-                if s.get("cached"):
-                    lines.append(f"| {s['name']} | 📦 缓存 | 上次成功 |")
-                elif s["ok"]:
-                    lines.append(f"| {s['name']} | ✅ | `{s.get('used_url','')}` |")
-                else:
-                    err = (s.get("error") or "")[:60].replace("|", "/")
-                    lines.append(f"| {s['name']} | ❌ | {err} |")
-            block = start + "\n" + "\n".join(lines) + "\n" + end
-            import re
             readme = re.sub(re.escape(start) + r".*?" + re.escape(end), block, readme, flags=re.S)
-            with open(readme_path, "w", encoding="utf-8") as f:
-                f.write(readme)
+        else:
+            # 没有标记，追加到末尾
+            readme += "\n\n" + block
+        with open(readme_path, "w", encoding="utf-8") as f:
+            f.write(readme)
+    else:
+        # 没有 README，生成一个简单的
+        with open(readme_path, "w", encoding="utf-8") as f:
+            f.write(f"# TVBox Config\n\n{block}\n")
 
 
 if __name__ == "__main__":
