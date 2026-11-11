@@ -572,14 +572,24 @@ def clean_sites(sites, probe=True):
     dropped_pan = []
     dropped_junk = []
     dropped_dead = []
+    dropped_live = []
     # 引流/配置站：直接删除，不是真点播
     JUNK_KWS = ("配置", "免费分享", "更新日期", "公告", "导航",
                 "微信", "公众号", "加群", "下载APP", "下载app",
                 "配置中心", "配置中心", "破解", "会员", "VIP", "vip")
 
+    # 直播类站点：虎牙/斗鱼/企鹅/哔哩/网红/竞技/310/JRKAN 这些，属于点播接口里
+    # 混进来的直播平台，用户只保留自己的官方直播源，这些一律剔除
+    # 只按明确的直播字样剔除，不要用平台名（哔哩/企鹅也有正经影视点播）
+    LIVE_KWS = ("直播", "live", "kman", "310", "看球", "轮播")
+
     def _is_junk(s):
         text = ((s.get("name") or "") + " " + (s.get("key") or "")).lower()
         return any(k.lower() in text for k in JUNK_KWS)
+
+    def _is_live(s):
+        text = ((s.get("name") or "") + " " + (s.get("key") or "")).lower()
+        return any(k.lower() in text for k in LIVE_KWS)
 
     for s in sites or []:
         if not isinstance(s, dict):
@@ -592,6 +602,9 @@ def clean_sites(sites, probe=True):
             continue
         if _is_junk(s):
             dropped_junk.append(name)
+            continue
+        if _is_live(s):
+            dropped_live.append(name)
             continue
         if probe and stype == 1 and api.startswith("http"):
             ok, dt = _site_alive(api)
@@ -614,6 +627,8 @@ def clean_sites(sites, probe=True):
         print(f"   - 网盘: {n}")
     for n in dropped_dead[:20]:
         print(f"   - 死链: {n}")
+    for n in dropped_live[:20]:
+        print(f"   - 直播类: {n}")
     return out, speed_data
 
 
@@ -756,7 +771,9 @@ def merge(fetched):
             sites.append(s)
     merged["sites"] = sites
 
-    for field in ("lives", "parses", "doh", "rules", "flags"):
+    # lives 一律不合并：只保留脚本自己抓的官方直播源（央视 + 卫视）
+    merged["lives"] = []
+    for field in ("parses", "doh", "rules", "flags"):
         seen2 = set()
         out = []
         for _sid, _name, data in fetched:
