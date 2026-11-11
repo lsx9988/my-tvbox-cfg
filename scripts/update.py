@@ -40,6 +40,9 @@ os.makedirs(SOURCES_DIR, exist_ok=True)
 USER_AGENT = "Mozilla/5.0"
 TIMEOUT = 15
 MAX_RETRIES = 2
+SITE_PROBE_TIMEOUT = 6      # 单次探测超时（境外机房到国内 CDN 慢，4 秒会误杀）
+SITE_PROBE_WORKERS = 24     # 并发探测线程数
+UNKNOWN_MAX = 220           # 探测超时但保留的站点上限
 
 TVBOX_KEYS = ("sites", "spiders", "lives", "store", "exts", "parses", "flags")
 
@@ -558,27 +561,52 @@ def _live_alive(url):
         return False
 
 
-def _site_alive(api):
-    """点播 API 活性探测，返回 (是否存活, 延迟毫秒)。HEAD 4 秒，不支持 HEAD 退到 GET。"""
-    import time as _t
+def _probe_err_kind(e):
+    """区分「域名没了（真死）」和「连不上但可能是网络位置问题（不确定）」。
+
+    GitHub Actions 跑在境外，国内站点大量 ConnectTimeout / SSL 报错，
+    这类不能当死链删，否则线上站数永远比本地少一截（本地 438 → 线上 404）。
+    只有解析不到域名（NXDOMAIN）才算真死。
+    """
+    txt = (str(e) or "").lower()
+    if ("nameresolution" in txt or "name or service not known" in txt
+            or "nodename nor servname" in txt or "getaddrinfo failed" in txt):
+        return "dead"
+    return "unknown"
+
+
+def _site_alive(api, timeout=None):
+    """点播 API 活性探测，返回 ("ok"/"unknown"/"dead", 延迟毫秒)。
+
+    ok      = 真连上（HTTP < 400），参与速度排序
+    unknown = 超时/SSL/连接重置/5xx，可能是网络位置问题，保留但排到最后
+    dead    = 明确 404/410 或域名解析失败，直接删
+    """
+    timeout = timeout or SITE_PROBE_TIMEOUT
+    t0 = time.time()
     try:
-        t0 = _t.time()
-        r = requests.head(api, timeout=4, allow_redirects=True,
+        r = requests.head(api, timeout=timeout, allow_redirects=True,
                           headers={"User-Agent": USER_AGENT})
-        dt = int((_t.time() - t0) * 1000)
+        dt = int((time.time() - t0) * 1000)
         if r.status_code < 400:
-            return True, dt
-        if r.status_code in (405, 501, 403):
-            t0 = _t.time()
-            r2 = requests.get(api, timeout=4, stream=True, allow_redirects=True,
+            return "ok", dt
+        if r.status_code in (403, 405, 501):
+            t0 = time.time()
+            r2 = requests.get(api, timeout=timeout, stream=True, allow_redirects=True,
                               headers={"User-Agent": USER_AGENT})
-            dt = int((_t.time() - t0) * 1000)
-            ok = r2.status_code < 400
+            dt = int((time.time() - t0) * 1000)
+            code = r2.status_code
             r2.close()
-            return ok, dt
-        return False, 99999
-    except Exception:
-        return False, 99999
+            if code < 400:
+                return "ok", dt
+            if code in (403, 429):
+                return "unknown", 99999
+            return "dead", 99999
+        if r.status_code in (400, 404, 410, 451):
+            return "dead", 99999
+        return "unknown", 99999
+    except Exception as e:
+        return _probe_err_kind(e), 99999
 
 
 # 网盘点播关键词：用户不用网盘资源，自动剔除
@@ -595,21 +623,27 @@ def is_pan_site(s):
 
 
 def clean_sites(sites, probe=True):
-    """清洗点播站点：剔网盘、剔引流站、剔死 API、按响应延迟排序。"""
-    direct = []   # (latency, site)
-    others = []   # JS 爬虫类
+    """清洗点播站点：剔网盘、剔引流站、剔直播站、分级探测、按响应延迟排序。
+
+    探测三档（境外跑 Actions 时是关键）：
+      ok      → 真连上，按毫秒数升序排最前
+      unknown → 超时/SSL/连接重置/5xx，可能是网络位置问题，保留但排到最后（上限 UNKNOWN_MAX）
+      dead    → HTTP 404/410 或域名解析失败，直接删
+    """
+    direct = []    # (latency, idx, site)
+    unknown = []   # (idx, site)
+    others = []    # JS 爬虫类（无 http api，无法探测）
     dropped_pan = []
     dropped_junk = []
     dropped_dead = []
     dropped_live = []
+
     # 引流/配置站：直接删除，不是真点播
     JUNK_KWS = ("配置", "免费分享", "更新日期", "公告", "导航",
                 "微信", "公众号", "加群", "下载APP", "下载app",
-                "配置中心", "配置中心", "破解", "会员", "VIP", "vip")
+                "配置中心", "破解", "会员", "VIP", "vip")
 
-    # 直播类站点：虎牙/斗鱼/企鹅/哔哩/网红/竞技/310/JRKAN 这些，属于点播接口里
-    # 混进来的直播平台，用户只保留自己的官方直播源，这些一律剔除
-    # 只按明确的直播字样剔除，不要用平台名（哔哩/企鹅也有正经影视点播）
+    # 直播类站点：只按明确的直播字样剔除，不要用平台名（哔哩/企鹅也有正经影视点播）
     LIVE_KWS = ("直播", "live", "kman", "310", "看球", "轮播")
 
     def _is_junk(s):
@@ -620,6 +654,7 @@ def clean_sites(sites, probe=True):
         text = ((s.get("name") or "") + " " + (s.get("key") or "")).lower()
         return any(k.lower() in text for k in LIVE_KWS)
 
+    probe_list = []
     for s in sites or []:
         if not isinstance(s, dict):
             continue
@@ -636,22 +671,44 @@ def clean_sites(sites, probe=True):
             dropped_live.append(name)
             continue
         if probe and stype == 1 and api.startswith("http"):
-            ok, dt = _site_alive(api)
-            if not ok:
-                dropped_dead.append(name)
-                continue
-            direct.append((dt, s))
+            probe_list.append((len(probe_list), s))
         else:
             others.append(s)
-    direct.sort(key=lambda x: x[0])
-    if direct:
-        print(f"   最快 5 个：{[(s.get('name'), dt) for dt, s in direct[:5]]}")
+
+    # 并发探测：串行 400+ 站 × 6 秒会跑成十几分钟
+    if probe_list:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=SITE_PROBE_WORKERS) as ex:
+            results = list(ex.map(
+                lambda it: (it[0], it[1], _site_alive((it[1].get("api") or "").strip())),
+                probe_list))
+        for idx, s, (state, dt) in results:
+            if state == "ok":
+                direct.append((dt, idx, s))
+            elif state == "unknown":
+                unknown.append((idx, s))
+            else:
+                dropped_dead.append(s.get("name", "?"))
+
+    direct.sort(key=lambda x: (x[0], x[1]))
+    unknown.sort(key=lambda x: x[0])
+    if len(unknown) > UNKNOWN_MAX:
+        dropped_dead.extend([s.get("name", "?") for _, s in unknown[UNKNOWN_MAX:]])
+        unknown = unknown[:UNKNOWN_MAX]
+
     out = []
-    speed_data = []  # 保存 (name, latency) 给 README 用
-    for dt, s in direct:
+    speed_data = []  # (name, latency) 给 README 用，只记真测通的
+    for dt, _idx, s in direct:
         out.append(s)
         speed_data.append((s.get("name", "?"), dt))
+    for _idx, s in unknown:
+        out.append(s)
     out.extend(others)
+
+    print("   探测结果：可达 %d / 无法确认 %d / 判定失效 %d"
+          % (len(direct), len(unknown), len(dropped_dead)))
+    if direct:
+        print(f"   最快 5 个：{[(s.get('name'), dt) for dt, _i, s in direct[:5]]}")
     for n in dropped_pan[:20]:
         print(f"   - 网盘: {n}")
     for n in dropped_dead[:20]:
@@ -906,8 +963,18 @@ def main():
         quote = QUOTES[hash(today) % len(QUOTES)]
         n_sites = len(merged.get("sites", []))
         n_lives = len(merged.get("lives", []))
-        merged["warningText"] = f"📅 {today} 更新 | {n_sites}站 {n_lives}直播 | 今日寄语：{quote}"
-        print(f"[banner] {merged['warningText']}")
+        prof = globals().get("_CCTV_PROFILE")
+        if prof and prof[1]:
+            tail = f"{prof[0]}央视+{prof[1]}卫视"
+        elif prof:
+            tail = f"{prof[0]}央视台"
+        else:
+            tail = f"{n_lives}直播入口"
+        banner = f"📅 {today} 更新 | 点播 {n_sites} 站 | 直播 {tail} | 今日寄语：{quote}"
+        # FongMi 只认 notice（配置加载时弹一次长 Toast），warningText 它不读
+        merged["notice"] = banner
+        merged["warningText"] = banner
+        print(f"[banner] {banner}")
 
         # 再次规范化 + 质量门：只要还有一处类型混合，FongMi 就会整份配置解析失败
         merged = normalize_types(merged)
@@ -917,6 +984,12 @@ def main():
             for f, k, c in conflicts:
                 print("   %s.%s -> %s" % (f, k, c))
             sys.exit(1)
+
+        # 兜底：可达站点过少说明这次探测整体异常（境外机房/源站挂了），保留旧文件别覆盖
+        if len(merged.get("sites", [])) < 100 and os.path.exists(os.path.join(OUTPUT_DIR, "tvbox_new.json")):
+            print("[guard] 可用站点过少（%d），保留上一次的 tvbox_new.json"
+                  % len(merged.get("sites", [])))
+            return
 
         # 主配置：tvbox_new.json（GitHub Pages 入口）
         new_path = os.path.join(OUTPUT_DIR, "tvbox_new.json")
