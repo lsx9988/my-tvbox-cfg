@@ -88,7 +88,18 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 ---
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 16:30（北京时间） · 成功 **5/8** 个源
+> 🔄 最近更新：2026-11-11 16:59:55（北京时间） · 成功 **5/8** 个源
+
+| 源 | 状态 | 地址 |
+| --- | --- | --- |
+| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
+| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
+| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
+| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
+| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
+| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
+| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
 <!-- STATUS_END -->
 
 ---
