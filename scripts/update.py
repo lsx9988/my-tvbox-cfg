@@ -1115,7 +1115,7 @@ def main():
             tail = f"{prof[0]}央视台"
         else:
             tail = f"{n_lives}直播入口"
-        banner = f"📖 {quote}"
+        banner = f"✨ 今日寄语 ✨\n{quote}"
         # FongMi 只认 notice（配置加载时弹一次长 Toast），warningText 它不读
         merged["notice"] = banner
         merged["warningText"] = banner
