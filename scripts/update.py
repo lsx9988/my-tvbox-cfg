@@ -748,12 +748,7 @@ def main():
         print("聚合完成：%d 站，%d 直播（类型校验通过）" % (
             len(merged.get("sites", [])), len(merged.get("lives", []))))
 
-        # 长辈版配置（只留最快 20 个直连站 + 国内直播）
-        build_elder_config(merged)
-        # 最新上线影片
-        build_new_releases(merged)
-
-        # 额外按类型拆分输出，方便在仓库里直接浏览（FongMi 仍只用 tvbox.json）
+        # 额外按类型拆分输出，方便在仓库里直接浏览（FongMi 仍只用 tvbox_new.json）
         with open(os.path.join(OUTPUT_DIR, "sites.json"), "w", encoding="utf-8") as f:
             json.dump({"sites": merged.get("sites", [])}, f,
                       ensure_ascii=False, separators=(",", ":"))
@@ -761,6 +756,25 @@ def main():
             json.dump({"lives": merged.get("lives", [])}, f,
                       ensure_ascii=False, separators=(",", ":"))
         print("已拆分输出 sites.json / lives.json")
+
+        # 清理 output 目录里的旧文件，只保留白名单
+        KEEP = {
+            "tvbox.json", "tvbox_new.json", "sites.json", "lives.json",
+            "live_intl.txt", "status.json", "多仓订阅.json",
+        }
+        removed = []
+        for fn in os.listdir(OUTPUT_DIR):
+            fp = os.path.join(OUTPUT_DIR, fn)
+            if os.path.isfile(fp) and fn not in KEEP:
+                os.remove(fp)
+                removed.append(fn)
+            elif os.path.isdir(fp) and fn != "_sources":
+                # 保留 _sources 目录（原始抓取缓存），其他子目录删掉
+                import shutil
+                shutil.rmtree(fp, ignore_errors=True)
+                removed.append(fn + "/")
+        if removed:
+            print(f"[cleanup] 删除旧文件：{', '.join(removed)}")
 
     # 多仓订阅（给影视仓用）
     repo = os.environ.get("GITHUB_REPOSITORY", "lsx9988/my-tvbox-cfg")
