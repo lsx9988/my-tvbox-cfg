@@ -328,6 +328,7 @@ SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2
                       r"天津|重庆|四川|贵州|云南|广西|江西|福建|吉林|辽宁|黑龙江|"
                       r"山西|陕西|甘肃|青海|宁夏|内蒙古|新疆|西藏|海南|东南|南方|三沙|延边|兵团)卫视$")
 SAT_TARGET = 40   # 最多保留多少个卫视
+SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
 
 
 def _sat_ok(url, timeout=6):
@@ -369,21 +370,33 @@ def build_satellite_live():
         by_name.setdefault(n, []).append(u)
 
     def _probe(pair):
+        """一个台测它所有的候选地址，把能播的按延迟排好留最多 3 条。"""
         n, urls = pair
-        best = None
+        good = []
         for u in urls:
             ok, ms = _sat_ok(u)
-            if ok and (best is None or ms < best[1]):
-                best = (u, ms)
-        return (n, best[0], best[1]) if best else None
+            if ok:
+                good.append((ms, u))
+        if not good:
+            return None
+        good.sort()
+        return (n, good[:SAT_LINES_PER_CH])
 
     with ThreadPoolExecutor(max_workers=20) as ex:
         got = [x for x in ex.map(_probe, list(by_name.items())) if x]
 
-    got.sort(key=lambda x: x[2])
+    # 按每个台最快的那条排台序，选中前 SAT_TARGET 个台
+    got.sort(key=lambda x: x[1][0][0])
     got = got[:SAT_TARGET]
-    print("[sat] 卫视可用 %d 个（源里共 %d 个不同卫视）" % (len(got), len(by_name)))
-    return got
+
+    out = []
+    for n, lines in got:
+        for ms, u in lines:
+            out.append((n, u, ms))
+
+    print("[sat] 卫视 %d 个台 / %d 条线路（源里共 %d 个不同卫视）"
+          % (len(got), len(out), len(by_name)))
+    return out
 
 
 def _cctv_join(base, rel):
@@ -509,7 +522,8 @@ def build_cctv_live():
             lines.append(sn + "," + su)
 
     cctv_channels = len(set(x[0] for x in picked))
-    kept = cctv_channels + len(sats or [])
+    sat_channels = len(set(x[0] for x in (sats or [])))
+    kept = cctv_channels + sat_channels
 
     path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
     with open(path, "w", encoding="utf-8") as f:
@@ -517,7 +531,7 @@ def build_cctv_live():
     print("[cctv] 写入 cctv_live.txt：%d 个频道" % kept)
     print("[cctv] 最快 5 个：%s" % [(x[0], x[2]) for x in picked[:5]])
 
-    globals()["_CCTV_PROFILE"] = (cctv_channels, len(sats or []), (picked[0][0], picked[0][2]))
+    globals()["_CCTV_PROFILE"] = (cctv_channels, sat_channels, (picked[0][0], picked[0][2]))
 
     return {
         "name": "央视直播",
