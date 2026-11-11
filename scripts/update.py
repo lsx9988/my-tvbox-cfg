@@ -591,6 +591,15 @@ def main():
         print("聚合完成：%d 站，%d 直播（类型校验通过）" % (
             len(merged.get("sites", [])), len(merged.get("lives", []))))
 
+        # 额外按类型拆分输出，方便在仓库里直接浏览（FongMi 仍只用 tvbox.json）
+        with open(os.path.join(OUTPUT_DIR, "sites.json"), "w", encoding="utf-8") as f:
+            json.dump({"sites": merged.get("sites", [])}, f,
+                      ensure_ascii=False, separators=(",", ":"))
+        with open(os.path.join(OUTPUT_DIR, "lives.json"), "w", encoding="utf-8") as f:
+            json.dump({"lives": merged.get("lives", [])}, f,
+                      ensure_ascii=False, separators=(",", ":"))
+        print("已拆分输出 sites.json / lives.json")
+
     # 多仓订阅（给影视仓用）
     repo = os.environ.get("GITHUB_REPOSITORY", "lsx9988/my-tvbox-cfg")
     sub = {"urls": []}
