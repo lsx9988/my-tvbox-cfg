@@ -1,56 +1,11 @@
 [
  {
   "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:11:42",
+  "updated_at": "2026-11-11 23:01:22",
   "sites": 401,
   "sources_ok": 5,
   "cctv": 19,
   "sat": 40,
-  "avg_ms": 313
- },
- {
-  "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:30:39",
-  "sites": 401,
-  "sources_ok": 5,
-  "cctv": 19,
-  "sat": 40,
-  "avg_ms": 343
- },
- {
-  "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:33:45",
-  "sites": 401,
-  "sources_ok": 5,
-  "cctv": 19,
-  "sat": 40,
-  "avg_ms": 260
- },
- {
-  "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:36:48",
-  "sites": 401,
-  "sources_ok": 5,
-  "cctv": 19,
-  "sat": 40,
-  "avg_ms": 366
- },
- {
-  "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:45:46",
-  "sites": 401,
-  "sources_ok": 5,
-  "cctv": 19,
-  "sat": 40,
-  "avg_ms": 424
- },
- {
-  "date": "2026-11-11",
-  "updated_at": "2026-11-11 22:51:42",
-  "sites": 401,
-  "sources_ok": 5,
-  "cctv": 19,
-  "sat": 40,
-  "avg_ms": 378
+  "avg_ms": 263
  }
 ]
