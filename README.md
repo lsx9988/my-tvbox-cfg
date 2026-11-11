@@ -5,102 +5,136 @@
 
 ![Update](https://img.shields.io/badge/update-every%206h-blue?logo=githubactions)
 ![Sources](https://img.shields.io/badge/sources-8%20aggregated-green)
-![Live](https://img.shields.io/badge/international%20live-2701%20channels-orange)
+![Live](https://img.shields.io/badge/international%20live-2700%2B%20channels-orange)
 ![License](https://img.shields.io/badge/license-personal%20use-lightgrey)
 
 ---
 
-## 推荐配置地址
+## 我只需要做一件事
 
-在 FongMi / TVBox 的「设置 → 配置地址」中，把**点播**和**直播**两个框都填成下面这条：
+在 FongMi / TVBox 的「设置 → 配置地址」中，**点播**和**直播**两个框都填：
 
 ```
 https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json
 ```
 
-> 为什么用 `gcore.jsdelivr.net`：jsDelivr 的 `fastly` 节点对同一文件名有最长 12 小时硬缓存，
-> 我推送新版本后它仍会返回旧内容；`gcore` 节点更新及时，已实测可用。
-> 仓库 Actions 在每次发布后会自动调用 `purge.jsdelivr.net` 清理缓存。
+填完保存，以后不用动。每 6 小时自动更新一次，APP 下拉刷新即可。
 
-### 备用入口
+### 备用地址
 
-| 入口 | 地址 | 用途 |
-| --- | --- | --- |
-| 主配置（推荐） | `https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json` | 点播 + 直播 同一份 |
-| 备用节点 | `https://fastly.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json` | 主节点不通时切换 |
-| 国际直播单链 | `https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/live_intl.txt` | 单独挂直播时用 |
+| 场景 | 地址 |
+| --- | --- |
+| 主用（推荐） | `https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json` |
+| gcore 不通时备用 | `https://fastly.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox.json` |
+| 只挂直播 | `https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/live_intl.txt` |
+
+> 为什么用 gcore：jsDelivr 的 fastly 节点对同一文件名有最长 12 小时硬缓存，gcore 更新及时。
+> 每次发布后 Actions 会自动调用 `purge.jsdelivr.net` 清缓存。
 
 ---
 
 ## 当前聚合状态
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 13:46:58（北京时间） · 成功 **5/8** 个源
-
-| 源 | 状态 | 地址 |
-| --- | --- | --- |
-| 王二小 | ✅ | `https://9280.kstore.vip/newwex.json` |
-| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
-| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
-| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
-| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
-| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
-| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
-| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+> 🔄 状态块由 `scripts/update.py` 每次运行自动覆写，手动编辑会被覆盖。
 <!-- STATUS_END -->
 
 ---
 
-## 自动更新机制
+## 目录结构
 
-| 项目 | 说明 |
+```
+.
+├── config/
+│   └── sources.json          # 【改这里】8 个聚合源列表，加新源就编辑它
+├── scripts/
+│   └── update.py            # 聚合 / 清洗 / 校验 / 状态回写
+├── .github/workflows/
+│   └── daily.yml            # 定时任务（cron）
+└── output/
+    ├── tvbox.json           # ★ FongMi 直接填这个（合并版）
+    ├── sites.json           # 纯点播站点列表（503 个），浏览用
+    ├── lives.json           # 纯直播入口列表（8 条），浏览用
+    ├── live_intl.txt        # 国际节目单（24 组 2700+ 频道）
+    ├── status.json          # 各源成败状态
+    ├── 多仓订阅.json         # 影视仓类 APP 用
+    └── _sources/            # 单源干净副本（排错用）
+```
+
+---
+
+## 日常维护指南
+
+### 加一个新的点播源
+
+编辑 `config/sources.json`，在 `sources` 数组里加一项：
+
+```json
+{
+  "id": "简短英文名",
+  "name": "显示名",
+  "urls": ["主地址.json", "备用地址.json"]
+}
+```
+
+提交后等下一次定时任务（或手动 Run workflow）即可。脚本会自动：
+- 抓下来 → 修类型 → 去重 → 合并到 tvbox.json
+
+### 改刷新频率
+
+编辑 `.github/workflows/daily.yml` 里的 cron：
+- `0 */6 * * *` = 每 6 小时（当前）
+- `0 */12 * * *` = 每 12 小时
+- `0 8,20 * * *` = 每天 8 点和 20 点（北京时间 = UTC+8）
+
+### 手动立即更新
+
+仓库 → Actions → 左侧 Daily Update → 右侧 Run workflow → 选 main → 绿色 Run workflow 按钮。
+
+### 加国际频道
+
+不用改。脚本自动从 [iptv-org](https://iptv-org.github.io/) 拉各国公开频道。
+想加减国家，改 `scripts/update.py` 顶部的 `INTL_FEEDS` 列表。
+
+---
+
+## 自动质量保障
+
+每次发布前脚本会做：
+
+1. **多地址容灾**：每个源配主备 URL，中文域名自动 punycode
+2. **类型规范化**：把 `playerType`/`type` 等字段强制转 int、`ext` 强制转对象（修掉 FongMi "配置取得失败"）
+3. **直播清洗**：丢相对路径、本地代理、死链、重复，只保留活的
+4. **国际频道抽检**：并发 40 路 HEAD 探测，剔掉 4xx/超时
+5. **类型冲突质量门**：有任何类型混合直接 `exit 1`，不发布坏配置
+6. **缓存清理**：发布后自动 purge jsDelivr
+
+---
+
+## 故障排查
+
+| 症状 | 原因 / 处理 |
 | --- | --- |
-| 触发频率 | 每 6 小时一次（北京时间 02:00 / 08:00 / 14:00 / 20:00） |
-| 手动触发 | 仓库 Actions 页面 → `Daily Update` → `Run workflow` |
-| 源失败处理 | 单源失败不影响整体，沿用上一次缓存结果 |
-| 缓存清理 | 发布后自动 `purge.jsdelivr.net` |
+| 「配置取得失败」 | 通常是 CDN 还在旧缓存。等 10 分钟手动 Run workflow，或换备用地址 |
+| 直播某分组全是死链 | 国际源是公开 m3u，每周会有 20-40% 频道失效，自动跑会剔除 |
+| 点播某站打不开 | 源站本身挂了，等下一轮聚合自动换备用地址 |
+| Actions 红色叉号 | 点开看日志，通常是某个源 403/超时，不影响整体发布 |
 
-## 质量保障
+---
 
-聚合脚本对每份源配置做以下处理后才允许发布：
+## 边界说明
 
-1. **多地址容灾**：每个源配主地址 + 备用地址，中文域名自动 punycode。
-2. **类型规范化**：不同源把同一字段写成 int/str 混合（例如 `playerType` 写成 `"2"`），
-   FongMi 的 Gson 严格解析会整份配置抛异常、界面报「配置取得失败」。脚本强制把数值字段转 int、
-   `ext` 强制为对象，类型冲突直接终止发布。
-3. **可达性抽检**：国际直播源按并发 40 路 HEAD/GET 探测，丢弃超时与 4xx 地址。
-4. **去重**：站点 key、直播 name/url、解析 name 全部按主键去重。
+- 国内主流 CCTV/卫视 由聚合源自带，iptv-org 不收录黄金台
+- Netflix / Disney+ / HBO 等 DRM 内容、付费体育版权直播，任何 TVBox 壳都拿不到
+- 本仓库只做配置聚合，不托管视频内容
 
-## 国际直播
-
-除国内公开源外，本仓库额外从 [iptv-org](https://iptv-org.github.io/) 拉取公开 IP 频道索引，
-按国家与分类聚合为 24 个分组（中国 / 香港 / 台湾 / 澳门 / 美国 / 英国 / 日本 / 韩国 / 东南亚 / 欧美 /
-新闻 / 体育 / 电影 / 音乐 / 少儿 / 纪录片 等），写入 `output/live_intl.txt`。
-
-> **边界说明**：iptv-org 只收录有公开来源的频道。
-> Netflix / Disney+ / HBO / Amazon Prime 等带 DRM 加密的正版流媒体、以及付费体育版权直播，
-> 任何 TVBox 类壳都无法接入，不在本仓库覆盖范围内。
+---
 
 ## 本地运行
 
 ```bash
 pip install requests
 python scripts/update.py
-```
-
-## 目录结构
-
-```
-.
-├── config/sources.json          # 源列表
-├── scripts/update.py            # 聚合 / 规范化 / 抽检 / 状态回写
-├── .github/workflows/daily.yml  # 每 6 小时跑一次
-├── output/
-│   ├── tvbox.json               # 主配置入口（FongMi 直接填这个）
-│   ├── config.json              # 同名备份
-│   ├── live_intl.txt            # 国际直播分组
-│   └── <source_id>.json         # 单个源的干净副本
-└── README.md
 ```
 
 ---
