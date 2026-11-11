@@ -45,7 +45,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # -A 才能把脚本删掉的旧文件（如 live_intl.txt、旧 tvbox.json）一并提交
           git add -A output/ README.md
-          [ -f download.html ] && git add download.html
+          git add download.html 2>/dev/null || true
           git diff --staged --quiet || git commit -m "daily update $(date -u +%Y-%m-%d)"
           git push
       # 更新完发一封汇总邮件；没配 Secret 时脚本自动跳过，不会让任务变红
