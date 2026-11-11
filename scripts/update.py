@@ -963,6 +963,114 @@ def validate_config(conf):
     return errs
 
 
+DL_TPL = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FongMi 官方版下载 · 每日自动同步</title>
+<style>
+body{margin:0;background:#0d1117;color:#e6edf3;font:16px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:30px 20px 48px}
+h1{font-size:23px;margin:0 0 8px}
+.sub{color:#8b949e;font-size:14px;margin-bottom:20px}
+.badge{display:inline-block;background:rgba(31,111,235,.14);color:#58a6ff;border:1px solid rgba(31,111,235,.35);border-radius:6px;padding:3px 10px;font-size:13px;margin:0 8px 8px 0}
+.btn{display:block;text-align:center;background:#238636;color:#fff;text-decoration:none;border-radius:10px;padding:19px;font-size:19px;font-weight:600;margin:16px 0 6px}
+.btn2{display:block;text-align:center;background:#21262d;color:#e6edf3;border:1px solid #30363d;text-decoration:none;border-radius:10px;padding:12px;font-size:15px;margin:9px 0}
+.meta{color:#8b949e;font-size:13px;text-align:center;margin-bottom:18px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px;margin:18px 0}
+h2{font-size:15px;margin:0 0 8px}
+li{color:#8b949e;font-size:14px;margin:7px 0}
+a{color:#58a6ff;word-break:break-all}
+.foot{color:#484f58;font-size:12px;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>FongMi 官方原版</h1>
+<div class="sub">每天自动同步官方最新版本，收藏这一页就不用再找了</div>
+<span class="badge">v__TAG__</span><span class="badge">__PUB__ 发布</span>
+
+<a class="btn" href="__M64__">下载手机版 · 64 位 · __M64MB__ MB</a>
+<div class="meta">绝大多数安卓手机选这个</div>
+<a class="btn2" href="__M32__">手机版 · 32 位 · __M32MB__ MB（老机型）</a>
+<a class="btn2" href="__T64__">电视版 · 64 位 · __T64MB__ MB</a>
+<a class="btn2" href="__T32__">电视版 · 32 位 · __T32MB__ MB</a>
+
+<div class="card">
+<h2>说明</h2>
+<li>这是 FongMi 官方发布包，未做任何修改</li>
+<li>下载链接每天自动刷新，永远指向官方当前最新版</li>
+<li>装完到「设置 → 配置地址」填我这份配置，点播直播都填：
+<a href="https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json">https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json</a></li>
+<li>手机嫌卡可换精简版：
+<a href="https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_lite.json">tvbox_lite.json</a></li>
+</div>
+
+<div class="card">
+<h2>官方发布页</h2>
+<li><a href="__REL__">__REL__</a></li>
+</div>
+
+<div class="foot">本页由 my-tvbox-cfg 每日自动生成 · __GEN__</div>
+</div>
+</body>
+</html>
+"""
+
+
+def build_download_page():
+    """每天把 FongMi 官方最新版的下载地址同步到固定页面，链接可以长期分享。"""
+    api = "https://api.github.com/repos/FongMi/Release/releases/latest"
+    hdr = {"User-Agent": "my-tvbox-cfg"}
+    try:
+        r = requests.get(api, timeout=15, headers=hdr)
+    except Exception:
+        # 少数环境缺根证书，退回不校验再试一次
+        try:
+            r = requests.get(api, timeout=15, headers=hdr, verify=False)
+        except Exception as e:
+            print("[dl] 拉取失败，保留旧页面：%s" % e)
+            return
+    if r.status_code != 200:
+        print("[dl] API 返回 %d，保留旧页面" % r.status_code)
+        return
+    d = r.json()
+
+    tag = (d.get("tag_name") or "").strip()
+    pub = (d.get("published_at") or "")[:10]
+    rel = d.get("html_url") or "https://github.com/FongMi/Release/releases"
+    amap = {a.get("name"): a for a in d.get("assets", [])}
+
+    def _a(name):
+        x = amap.get(name)
+        if not x:
+            return rel, "请见官方页"
+        return (x.get("browser_download_url") or rel), "%.1f" % ((x.get("size") or 0) / 1048576)
+
+    vals = {
+        "__TAG__": tag or "-",
+        "__PUB__": pub or "-",
+        "__REL__": rel,
+        "__GEN__": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    for key, name, sizekey in (
+        ("__M64__", "mobile-arm64_v8a.apk", "__M64MB__"),
+        ("__M32__", "mobile-armeabi_v7a.apk", "__M32MB__"),
+        ("__T64__", "leanback-arm64_v8a.apk", "__T64MB__"),
+        ("__T32__", "leanback-armeabi_v7a.apk", "__T32MB__"),
+    ):
+        u, mb = _a(name)
+        vals[key] = u
+        vals[sizekey] = mb
+
+    html = DL_TPL
+    for k, v in vals.items():
+        html = html.replace(k, str(v))
+    _atomic_write(os.path.join(ROOT, "download.html"), html)
+    print("[dl] 下载页已更新 v%s（%s）" % (tag, pub))
+
+
 def main():
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = json.load(f)
@@ -1322,6 +1430,12 @@ def main():
         # 没有 README，生成一个简单的
         with open(readme_path, "w", encoding="utf-8") as f:
             f.write(f"# TVBox Config\n\n{block}\n")
+
+    # 官方客户端下载页：每天同步 FongMi 最新版，链接可长期分享
+    try:
+        build_download_page()
+    except Exception as e:
+        print("[dl] 生成失败：%s" % e)
 
 
 if __name__ == "__main__":
