@@ -612,8 +612,8 @@ def main():
         merged["lives"] = clean_lives(merged.get("lives", []))
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
         merged["sites"] = clean_sites(merged.get("sites", []))
-        # 强制壁纸：Bing 每日壁纸，每天自动换
-        merged["wallpaper"] = "https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN"
+        # 强制壁纸：深蓝渐变暗色图，保证文字可读
+        merged["wallpaper"] = "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1920&q=80"
 
         # 再次规范化 + 质量门：只要还有一处类型混合，FongMi 就会整份配置解析失败
         merged = normalize_types(merged)
