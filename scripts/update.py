@@ -410,6 +410,48 @@ def _live_alive(url):
         return False
 
 
+def _site_alive(api):
+    """点播 API 活性探测：HEAD 4 秒，不支持 HEAD 退到 GET stream。"""
+    try:
+        r = requests.head(api, timeout=4, allow_redirects=True,
+                          headers={"User-Agent": USER_AGENT})
+        if r.status_code < 400:
+            return True
+        if r.status_code in (405, 501, 403):
+            r2 = requests.get(api, timeout=4, stream=True, allow_redirects=True,
+                              headers={"User-Agent": USER_AGENT})
+            ok = r2.status_code < 400
+            r2.close()
+            return ok
+        return False
+    except Exception:
+        return False
+
+
+def clean_sites(sites, probe=True):
+    """清洗点播站点：只对 type=1 且 api 是 http URL 的做活性探测，剔掉死的。
+    JS 爬虫类（type=3，api 是 csp_/drpy_/./ 这种）不探测，因为 api 不是 URL。"""
+    out = []
+    dropped = []
+    for s in sites or []:
+        if not isinstance(s, dict):
+            continue
+        api = (s.get("api") or "").strip()
+        stype = s.get("type", 0)
+        # 只对直连 API 站做探测
+        if probe and stype == 1 and api.startswith("http"):
+            if not _site_alive(api):
+                dropped.append(s.get("name", api[:40]))
+                continue
+        out.append(s)
+    print(f"[sites] 清洗：{len(sites)} -> {len(out)}（剔死 API {len(dropped)}）")
+    for n in dropped[:20]:
+        print(f"   - {n}")
+    if len(dropped) > 20:
+        print(f"   ... 还有 {len(dropped)-20} 个")
+    return out
+
+
 def clean_lives(lives, probe=True):
     """清洗直播列表：丢掉相对路径、本地代理、空 url、垃圾条目，按 url 去重，活性探测。"""
     out = []
@@ -568,6 +610,10 @@ def main():
                 merged["lives"].append(intl)
         # 清洗直播列表
         merged["lives"] = clean_lives(merged.get("lives", []))
+        # 清洗点播站点（只剔死 API，JS 爬虫保留）
+        merged["sites"] = clean_sites(merged.get("sites", []))
+        # 强制壁纸：Bing 每日壁纸，每天自动换
+        merged["wallpaper"] = "https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN"
 
         # 再次规范化 + 质量门：只要还有一处类型混合，FongMi 就会整份配置解析失败
         merged = normalize_types(merged)
