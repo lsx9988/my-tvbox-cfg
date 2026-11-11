@@ -1211,7 +1211,9 @@ def main():
         _last = ""
         try:
             with open(os.path.join(OUTPUT_DIR, "tvbox_new.json"), "r", encoding="utf-8") as _f:
-                _last = (json.load(_f).get("notice") or "").replace("📖", "").strip()
+                _n = (json.load(_f).get("notice") or "")
+                # notice 现在是「标题\n正文」，取最后一行才是上一句
+                _last = _n.split("\n")[-1].strip()
         except Exception:
             _last = ""
         _pool = [q for q in QUOTES if q.strip() != _last] or QUOTES
@@ -1335,6 +1337,7 @@ def main():
         hist = []
     _prof = globals().get("_CCTV_PROFILE")
     _fast = [dt for _n, dt in (site_speed or [])]
+    hist = [x for x in hist if x.get("date") != updated_at[:10]]
     hist.append({
         "date": updated_at[:10],
         "updated_at": updated_at,
