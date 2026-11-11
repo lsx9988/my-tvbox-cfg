@@ -4,8 +4,8 @@
 > 每天凌晨 3 点自动抓取公开源、测速排序、剔死链、发布
 
 ![Update](https://img.shields.io/badge/update-daily%2003:00-blue?logo=githubactions)
-![Sites](https://img.shields.io/badge/sites-445-green)
-![Live](https://img.shields.io/badge/live-59%20%E5%8F%B0-orange)
+![Sites](https://img.shields.io/badge/sites-408%20%E7%AB%99-green)
+![Live](https://img.shields.io/badge/live-56%20%E5%8F%B0-orange)
 
 ---
 
@@ -54,14 +54,14 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 ---
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 19:49:15（北京时间） · 成功 **5/8** 个源 · 共 **445** 站 **1** 直播
+> 🔄 最近更新：2026-11-11 21:18:08（北京时间） · 成功 **5/8** 个源 · 共 **408** 站 **1** 直播
 
 | 源 | 状态 |
 | --- | --- |
 | 王二小 | ✅ |
 | 老刘备 | ✅ |
 | 小马 | ✅ |
-| 讴歌 | ❌ ('Connection aborted.', ConnectionResetE |
+| 讴歌 | ❌ 403 Client Error: Forbidden for url: htt |
 | 4K小盒子 | ✅ |
 | 小盒子单仓 | ✅ |
 | 拾光多仓 | ❌ 不是 TVBox 配置（缺 sites/spiders/lives） |
@@ -71,30 +71,30 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 
 | 排名 | 名称 | 延迟 |
 | :---: | --- | :---: |
-| 1 | 建安 | 141ms |
-| 2 | 天堂┃采集 | 364ms |
-| 3 | 🦊火狐采集 | 366ms |
-| 4 | 🎥┃豪华┃资源 | 370ms |
-| 5 | 电影天堂 | 402ms |
-| 6 | 非凡[直连] | 410ms |
-| 7 | 🧡┃初恋┃官源 | 439ms |
-| 8 | 量子资源(切) | 441ms |
-| 9 | 闪电资源(切) | 659ms |
-| 10 | 🎥┃量子┃资源 | 665ms |
-| 11 | 新浪资源(切) | 694ms |
-| 12 | 量子[直连] | 717ms |
-| 13 | 天涯 | 791ms |
-| 14 | 率率[直连] | 1084ms |
-| 15 | 🎥┃索尼┃资源 | 1147ms |
+| 1 | 🎥┃光速┃资源 | 46ms |
+| 2 | 率率[直连] | 89ms |
+| 3 | 光速资源(切) | 95ms |
+| 4 | 🥗┃非凡┃资源 | 98ms |
+| 5 | 🐯虎牙采集 | 109ms |
+| 6 | 🐉┃索尼┃高清 | 115ms |
+| 7 | 🎥┃索尼┃资源 | 115ms |
+| 8 | 🦊火狐采集 | 116ms |
+| 9 | 🎥┃红牛┃资源 | 126ms |
+| 10 | 🐓┃爱坤┃资源 | 165ms |
+| 11 | 闪电资源(切) | 176ms |
+| 12 | 红牛资源(切) | 194ms |
+| 13 | 新浪资源(切) | 204ms |
+| 14 | 极速[直连] | 207ms |
+| 15 | 天涯 | 209ms |
 
 ### 央视直播（官网直连）
 
 | 项目 | 数量 | 最快频道 | 延迟 |
 | :---: | :---: | --- | :---: |
-| 央视频道 | 19 | CCTV-1 综合 | 399ms |
+| 央视频道 | 16 | CCTV-1 综合 | 1301ms |
 | 卫视频道 | 40 | — | — |
 
-> 央视 **19** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；卫视 **40** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）。完整列表见 `cctv_live.txt`
+> 央视 **16** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；卫视 **40** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）。完整列表见 `cctv_live.txt`
 <!-- STATUS_END -->
 
 ---
