@@ -392,6 +392,65 @@ def build_intl_live():
     }
 
 
+def _live_alive(url):
+    """直播源活性探测：HEAD 3 秒，4xx 直接判死，5xx 重试一次。"""
+    try:
+        r = requests.head(url, timeout=3, allow_redirects=True,
+                          headers={"User-Agent": USER_AGENT})
+        if r.status_code < 400:
+            return True
+        if r.status_code in (405, 501, 403):
+            r2 = requests.get(url, timeout=3, stream=True, allow_redirects=True,
+                              headers={"User-Agent": USER_AGENT})
+            ok = r2.status_code < 400
+            r2.close()
+            return ok
+        return False
+    except Exception:
+        return False
+
+
+def clean_lives(lives, probe=True):
+    """清洗直播列表：丢掉相对路径、本地代理、空 url、垃圾条目，按 url 去重，活性探测。"""
+    out = []
+    seen = set()
+    dropped = []
+    for item in lives or []:
+        if not isinstance(item, dict):
+            dropped.append(("非dict", str(item)[:60]))
+            continue
+        name = (item.get("name") or "").strip()
+        url = (item.get("url") or "").strip()
+        if not url:
+            dropped.append(("空url", name))
+            continue
+        if url.startswith("./") or url.startswith("../"):
+            dropped.append(("相对路径", name))
+            continue
+        if "127.0.0.1" in url or "localhost" in url or url == "yqk":
+            dropped.append(("本地代理/特殊类型", name))
+            continue
+        if name in ("?", ""):
+            dropped.append(("无名", url))
+            continue
+        if url in seen:
+            dropped.append(("重复", name))
+            continue
+        # 活性探测：我们自己的国际频道跳过（它是我们生成的，必然通）
+        if probe and "lsx9988" not in url:
+            if not _live_alive(url):
+                dropped.append(("活性探测失败", name))
+                continue
+        seen.add(url)
+        out.append(item)
+    # 把"国际频道"排第一
+    out.sort(key=lambda x: 0 if x.get("name") == "国际频道" else 1)
+    print(f"[lives] 清洗：{len(lives)} -> {len(out)}（丢 {len(dropped)}）")
+    for reason, n in dropped:
+        print(f"   - {reason}: {n}")
+    return out
+
+
 def merge(fetched):
     """fetched: [(id, name, data)]"""
     if not fetched:
@@ -506,7 +565,9 @@ def main():
             merged.setdefault("lives", [])
             names = {x.get("name") for x in merged["lives"] if isinstance(x, dict)}
             if intl["name"] not in names:
-                merged["lives"].insert(0, intl)
+                merged["lives"].append(intl)
+        # 清洗直播列表
+        merged["lives"] = clean_lives(merged.get("lives", []))
 
         # 再次规范化 + 质量门：只要还有一处类型混合，FongMi 就会整份配置解析失败
         merged = normalize_types(merged)
