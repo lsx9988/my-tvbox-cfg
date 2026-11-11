@@ -331,33 +331,9 @@ SAT_TARGET = 40   # 最多保留多少个卫视
 
 
 def _sat_ok(url, timeout=6):
-    """卫视线路验证：能出 TS 分片才算真的能播。"""
-    t0 = time.time()
-    try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT},
-                         verify=False)
-        if r.status_code != 200:
-            return False, 99999
-        if ".ts" in r.text:
-            return True, int((time.time() - t0) * 1000)
-        m3 = [l.strip() for l in r.text.splitlines()
-              if l.strip() and not l.startswith("#") and ".m3u8" in l]
-        if not m3:
-            return False, 99999
-        sub = m3[0]
-        if sub.startswith("http"):
-            sub_url = sub
-        elif sub.startswith("/"):
-            sub_url = "https://" + url.split("/")[2] + sub
-        else:
-            sub_url = url.rsplit("/", 1)[0] + "/" + sub
-        r2 = requests.get(sub_url, timeout=timeout, headers={"User-Agent": USER_AGENT},
-                          verify=False)
-        if r2.status_code == 200 and ".ts" in r2.text:
-            return True, int((time.time() - t0) * 1000)
-        return False, 99999
-    except Exception:
-        return False, 99999
+    """卫视线路验证：必须真抓到一个 TS 分片才算能播（只查清单文本会大量假阳性）。"""
+    ok, ms, n, why = _cctv_stream_ok(url, timeout=timeout)
+    return ok, ms
 
 
 def build_satellite_live():
@@ -410,37 +386,64 @@ def build_satellite_live():
     return got
 
 
+def _cctv_join(base, rel):
+    """清单里的相对地址解析：根路径(/x.ts)要保留域名，否则按目录拼。"""
+    from urllib.parse import urlparse
+    if rel.startswith("http"):
+        return rel
+    p = urlparse(base)
+    if rel.startswith("/"):
+        return p.scheme + "://" + p.netloc + rel
+    return base.rsplit("/", 1)[0] + "/" + rel
+
+
+def _cctv_first(text, base, want):
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if ln and not ln.startswith("#") and want in ln:
+            return _cctv_join(base, ln)
+    return None
+
+
 def _cctv_stream_ok(url, timeout=8):
-    """确认这个 m3u8 真的能出 TS 分片（不是空壳 master），返回 (ok, 延迟ms, 分片数)。"""
+    """真抓第一个 TS 分片，确认不是空壳清单。返回 (ok, 延迟ms, 分片字节, 原因)。"""
     t0 = time.time()
+    H = {"User-Agent": USER_AGENT}
     try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT},
-                         verify=False)
-        if r.status_code != 200 or "#EXTM3U" not in r.text:
-            return False, 99999, 0
-        lines = [l.strip() for l in r.text.splitlines()
-                 if l.strip() and not l.startswith("#")]
-        ts = [l for l in lines if ".ts" in l]
-        if ts:
-            return True, int((time.time() - t0) * 1000), len(ts)
-        # 万一给的是 master，跟一层
-        m3 = [l for l in lines if ".m3u8" in l]
-        if m3:
-            sub = m3[0]
-            if sub.startswith("http"):
-                sub_url = sub
-            elif sub.startswith("/"):
-                sub_url = "https://" + url.split("/")[2] + sub
-            else:
-                sub_url = url.rsplit("/", 1)[0] + "/" + sub
-            r2 = requests.get(sub_url, timeout=timeout, headers={"User-Agent": USER_AGENT},
-                              verify=False)
-            if r2.status_code == 200 and ".ts" in r2.text:
-                n = len([l for l in r2.text.splitlines() if ".ts" in l])
-                return True, int((time.time() - t0) * 1000), n
-        return False, 99999, 0
-    except Exception:
-        return False, 99999, 0
+        r = requests.get(url, timeout=timeout, headers=H, verify=False)
+        if r.status_code != 200:
+            return False, 99999, 0, "m3u8 HTTP %d" % r.status_code
+        if "#EXTM3U" not in r.text:
+            return False, 99999, 0, "不是m3u8"
+
+        ts = _cctv_first(r.text, url, ".ts")
+        if not ts:
+            # master 清单，跟一层
+            sub = _cctv_first(r.text, url, ".m3u8")
+            if not sub:
+                return False, 99999, 0, "清单无内容"
+            r2 = requests.get(sub, timeout=timeout, headers=H, verify=False)
+            if r2.status_code != 200:
+                return False, 99999, 0, "子清单 HTTP %d" % r2.status_code
+            ts = _cctv_first(r2.text, sub, ".ts")
+            if not ts:
+                return False, 99999, 0, "子清单无ts"
+
+        tr = requests.get(ts, timeout=timeout + 4, headers=H, verify=False, stream=True)
+        code = tr.status_code
+        if code != 200:
+            tr.close()
+            return False, 99999, 0, "ts HTTP %d" % code
+        got = 0
+        for c in tr.iter_content(8192):
+            got = len(c)
+            break
+        tr.close()
+        if got < 1000:
+            return False, 99999, 0, "ts过小 %d字节" % got
+        return True, int((time.time() - t0) * 1000), int(tr.headers.get("Content-Length") or got), "ok"
+    except Exception as e:
+        return False, 99999, 0, type(e).__name__
 
 
 def build_cctv_live():
@@ -449,12 +452,19 @@ def build_cctv_live():
 
     def _probe_one(item):
         name, code = item
+        why = ""
+        urls = []          # 这个频道所有能播的线路，越多越稳
         for cdn in CCTV_CDN:
             url = cdn.format(ch=code)
-            ok, ms, n = _cctv_stream_ok(url)
+            ok, ms, n, why = _cctv_stream_ok(url)
             if ok:
-                return ("hit", name, code, url, ms)
-        return ("miss", name, code, "", 0)
+                urls.append((url, ms))
+        if urls:
+            return ("hit", name, code, urls, 0)
+        # 三套全挂且是 404/403 → 该频道有版权限制，别写死链进去
+        if "404" in why or "403" in why:
+            return ("dead", name, code, [], 0)
+        return ("miss", name, code, [], 0)
 
     with ThreadPoolExecutor(max_workers=INTL_PROBE_WORKERS) as ex:
         res = list(ex.map(_probe_one, CCTV_CHANNELS))
@@ -470,11 +480,14 @@ def build_cctv_live():
     # 通过了足够多，说明整体网络正常，个别没测通的按固定地址兜底
     # （GitHub Actions 跑在境外，部分国内 CDN 探测会失败，但国内手机能连）
     picked = []
-    for kind, name, code, url, ms in res:
+    for kind, name, code, urls, _ in res:
         if kind == "hit":
-            picked.append((name, url, ms, 1))
+            for u, ms in urls:
+                picked.append((name, u, ms, 1))
+        elif kind == "dead":
+            print("[cctv] %s 三套均 404/403（版权限制），跳过" % name)
         else:
-            print("[cctv] %s 未测通，用固定地址兜底" % name)
+            print("[cctv] %s 网络抖动未测通，用固定地址兜底" % name)
             picked.append((name, CCTV_CDN[0].format(ch=code), 0, 0))
 
     def _order(x):
@@ -483,6 +496,7 @@ def build_cctv_live():
 
     picked.sort(key=_order)
 
+    # 同一个台写多行 → FongMi 会合并成同一频道的多条线路，前一条挂了自动换下一条
     lines = ["央视频道,#genre#"]
     for name, url, ms, n in picked:
         lines.append(name + "," + url)
@@ -494,7 +508,8 @@ def build_cctv_live():
         for sn, su, sms in sats:
             lines.append(sn + "," + su)
 
-    kept = len(picked) + len(sats or [])
+    cctv_channels = len(set(x[0] for x in picked))
+    kept = cctv_channels + len(sats or [])
 
     path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
     with open(path, "w", encoding="utf-8") as f:
@@ -502,7 +517,7 @@ def build_cctv_live():
     print("[cctv] 写入 cctv_live.txt：%d 个频道" % kept)
     print("[cctv] 最快 5 个：%s" % [(x[0], x[2]) for x in picked[:5]])
 
-    globals()["_CCTV_PROFILE"] = (len(picked), len(sats or []), (picked[0][0], picked[0][2]))
+    globals()["_CCTV_PROFILE"] = (cctv_channels, len(sats or []), (picked[0][0], picked[0][2]))
 
     return {
         "name": "央视直播",
