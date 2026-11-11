@@ -88,18 +88,50 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 ---
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 16:59:55（北京时间） · 成功 **5/8** 个源
+> 🔄 最近更新：2026-11-11 17:03:12（北京时间） · 成功 **5/8** 个源 · 共 **430** 站 **7** 直播
 
-| 源 | 状态 | 地址 |
-| --- | --- | --- |
-| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
-| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
-| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
-| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
-| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
-| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
-| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
-| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+| 源 | 状态 |
+| --- | --- |
+| 王二小 | ✅ |
+| 老刘备 | ✅ |
+| 小马 | ✅ |
+| 讴歌 | ❌ 403 Client Error: Forbidden for url: htt |
+| 4K小盒子 | ✅ |
+| 小盒子单仓 | ✅ |
+| 拾光多仓 | ❌ 不是 TVBox 配置（缺 sites/spiders/lives） |
+| 挺好分享多仓 | ❌ 不是 TVBox 配置（缺 sites/spiders/lives） |
+
+### 点播源 TOP 15（按速度排序）
+
+| 排名 | 名称 | 延迟 |
+| :---: | --- | :---: |
+| 1 | 🎥┃光速┃资源 | 34ms |
+| 2 | 🎥┃索尼┃资源 | 47ms |
+| 3 | 影视 | 率率[直连] | 79ms |
+| 4 | 🐉┃索尼┃高清 | 109ms |
+| 5 | 影视 | 极速[直连] | 117ms |
+| 6 | 🐯虎牙采集 | 136ms |
+| 7 | 新浪资源(切) | 142ms |
+| 8 | ️天堂┃采集 | 166ms |
+| 9 | 影视 | 非凡[直连] | 185ms |
+| 10 | 🐓┃爱坤┃资源 | 201ms |
+| 11 | 光速资源(切) | 219ms |
+| 12 | 影视 | 天涯 | 227ms |
+| 13 | 闪电资源(切) | 259ms |
+| 14 | 🎥┃红牛┃资源 | 274ms |
+| 15 | 红牛资源(切) | 278ms |
+
+### 直播源（按速度排序）
+
+| 排名 | 名称 |
+| :---: | --- |
+| 1 | 国际频道 |
+| 2 | Kimentanm |
+| 3 | 综合直播 |
+| 4 | 咪咕 |
+| 5 | 有效期27年7月 |
+| 6 | 音乐所 |
+| 7 | live |
 <!-- STATUS_END -->
 
 ---
