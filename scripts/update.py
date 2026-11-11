@@ -314,6 +314,102 @@ def _url_alive(url):
         return False, 99999
 
 
+# ============ 卫视频道（运营商 IPTV 公网转播） ============
+# 省级卫视几乎都不在官网提供公开 m3u8（湖南卫视域名已出售、浙江/江苏/东方/
+# 北京/广东/深圳官网实测都拿不到），芒果TV 等自家 APP 的流带签名+DRM，
+# 无法生成静态地址。这里改用各省广电授权传输的 IPTV 公网转播地址，
+# 同样是官方播出的节目内容，但线路会变，所以每天重新拉、重新测。
+SAT_FEEDS = [
+    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
+    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
+]
+SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2,6}卫视$|"
+                      r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
+                      r"天津|重庆|四川|贵州|云南|广西|江西|福建|吉林|辽宁|黑龙江|"
+                      r"山西|陕西|甘肃|青海|宁夏|内蒙古|新疆|西藏|海南|东南|南方|三沙|延边|兵团)卫视$")
+SAT_TARGET = 40   # 最多保留多少个卫视
+
+
+def _sat_ok(url, timeout=6):
+    """卫视线路验证：能出 TS 分片才算真的能播。"""
+    t0 = time.time()
+    try:
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT},
+                         verify=False)
+        if r.status_code != 200:
+            return False, 99999
+        if ".ts" in r.text:
+            return True, int((time.time() - t0) * 1000)
+        m3 = [l.strip() for l in r.text.splitlines()
+              if l.strip() and not l.startswith("#") and ".m3u8" in l]
+        if not m3:
+            return False, 99999
+        sub = m3[0]
+        if sub.startswith("http"):
+            sub_url = sub
+        elif sub.startswith("/"):
+            sub_url = "https://" + url.split("/")[2] + sub
+        else:
+            sub_url = url.rsplit("/", 1)[0] + "/" + sub
+        r2 = requests.get(sub_url, timeout=timeout, headers={"User-Agent": USER_AGENT},
+                          verify=False)
+        if r2.status_code == 200 and ".ts" in r2.text:
+            return True, int((time.time() - t0) * 1000)
+        return False, 99999
+    except Exception:
+        return False, 99999
+
+
+def build_satellite_live():
+    """抓卫视 IPTV 转播地址，逐条验证可播，按延迟排序返回 (名称, url, ms) 列表。"""
+    from concurrent.futures import ThreadPoolExecutor
+
+    raw = []
+    for feed in SAT_FEEDS:
+        try:
+            r = requests.get(feed, timeout=20, headers={"User-Agent": USER_AGENT},
+                             verify=False)
+            if r.status_code != 200:
+                continue
+            for line in r.text.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(",", 1)
+                if len(parts) != 2:
+                    continue
+                name, url = parts[0].strip(), parts[1].strip()
+                if not url.startswith("http"):
+                    continue
+                if not SAT_KEEP.match(name):
+                    continue
+                raw.append((name, url))
+        except Exception as e:
+            print("[sat] 源异常: %s" % e)
+
+    # 同名频道多条线路，全部拿去测，取最快的
+    by_name = {}
+    for n, u in raw:
+        by_name.setdefault(n, []).append(u)
+
+    def _probe(pair):
+        n, urls = pair
+        best = None
+        for u in urls:
+            ok, ms = _sat_ok(u)
+            if ok and (best is None or ms < best[1]):
+                best = (u, ms)
+        return (n, best[0], best[1]) if best else None
+
+    with ThreadPoolExecutor(max_workers=20) as ex:
+        got = [x for x in ex.map(_probe, list(by_name.items())) if x]
+
+    got.sort(key=lambda x: x[2])
+    got = got[:SAT_TARGET]
+    print("[sat] 卫视可用 %d 个（源里共 %d 个不同卫视）" % (len(got), len(by_name)))
+    return got
+
+
 def _cctv_stream_ok(url, timeout=8):
     """确认这个 m3u8 真的能出 TS 分片（不是空壳 master），返回 (ok, 延迟ms, 分片数)。"""
     t0 = time.time()
@@ -381,7 +477,15 @@ def build_cctv_live():
     lines = ["央视频道,#genre#"]
     for name, url, ms, n in picked:
         lines.append(name + "," + url)
-    kept = len(picked)
+
+    # 卫视：官网不给公开流，用运营商 IPTV 公网转播地址补齐
+    sats = build_satellite_live()
+    if sats:
+        lines.append("卫视频道,#genre#")
+        for sn, su, sms in sats:
+            lines.append(sn + "," + su)
+
+    kept = len(picked) + len(sats or [])
 
     path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
     with open(path, "w", encoding="utf-8") as f:
@@ -389,7 +493,7 @@ def build_cctv_live():
     print("[cctv] 写入 cctv_live.txt：%d 个频道" % kept)
     print("[cctv] 最快 5 个：%s" % [(x[0], x[2]) for x in picked[:5]])
 
-    globals()["_CCTV_PROFILE"] = (kept, 0, (picked[0][0], picked[0][2]))
+    globals()["_CCTV_PROFILE"] = (len(picked), len(sats or []), (picked[0][0], picked[0][2]))
 
     return {
         "name": "央视直播",
@@ -852,9 +956,18 @@ def main():
     if tv_profile:
         cctv_cnt, tv_cnt, fastest = tv_profile
         live_lines.append(f"| 央视频道 | {cctv_cnt} | {fastest[0]} | {fastest[1]}ms |")
+        if tv_cnt:
+            live_lines.append(f"| 卫视频道 | {tv_cnt} | — | — |")
         live_lines.append("")
-        live_lines.append(f"> 共 **{cctv_cnt}** 个台，直接取央视官网（tv.cctv.com）的播放地址，"
-                          "不依赖任何第三方搬运站；完整列表见 `cctv_live.txt`")
+        if tv_cnt:
+            live_lines.append(
+                f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
+                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）。"
+                "完整列表见 `cctv_live.txt`")
+        else:
+            live_lines.append(
+                f"> 共 **{cctv_cnt}** 个台，直接取央视官网（tv.cctv.com）的播放地址，"
+                "不依赖任何第三方搬运站；完整列表见 `cctv_live.txt`")
     else:
         for i, l in enumerate(merged.get("lives", [])):
             lname = l.get("name", "?").replace("|", "").strip()
