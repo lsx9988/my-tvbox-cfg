@@ -447,11 +447,21 @@ def is_pan_site(s):
 
 
 def clean_sites(sites, probe=True):
-    """清洗点播站点：剔网盘、剔死 API、按响应延迟排序（快的排前面）。"""
+    """清洗点播站点：剔网盘、剔引流站、剔死 API、按响应延迟排序。"""
     direct = []   # (latency, site)
-    others = []   # JS 爬虫类，不探测
+    others = []   # JS 爬虫类
     dropped_pan = []
+    dropped_junk = []
     dropped_dead = []
+    # 引流/配置站：直接删除，不是真点播
+    JUNK_KWS = ("配置", "免费分享", "更新日期", "公告", "导航",
+                "微信", "公众号", "加群", "下载APP", "下载app",
+                "配置中心", "配置中心", "破解", "会员", "VIP", "vip")
+
+    def _is_junk(s):
+        text = ((s.get("name") or "") + " " + (s.get("key") or "")).lower()
+        return any(k.lower() in text for k in JUNK_KWS)
+
     for s in sites or []:
         if not isinstance(s, dict):
             continue
@@ -461,16 +471,17 @@ def clean_sites(sites, probe=True):
         if is_pan_site(s):
             dropped_pan.append(name)
             continue
+        if _is_junk(s):
+            dropped_junk.append(name)
+            continue
         if probe and stype == 1 and api.startswith("http"):
             ok, dt = _site_alive(api)
             if not ok:
                 dropped_dead.append(name)
                 continue
-            s["_latency"] = dt
             direct.append((dt, s))
         else:
             others.append(s)
-    # 直连 API 按延迟升序
     direct.sort(key=lambda x: x[0])
     if direct:
         print(f"   最快 5 个：{[(s.get('name'), dt) for dt, s in direct[:5]]}")
@@ -722,11 +733,13 @@ def main():
                 print("   %s.%s -> %s" % (f, k, c))
             sys.exit(1)
 
-        # 主入口：tvbox.json（output 根目录只保留这一个聚合文件，避免冗余）
-        # 历史原因：jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，
-        # 用独立文件名可以让 CDN 缓存键立即刷新。
+        # 主入口：tvbox.json（output 根目录）
         entry_path = os.path.join(OUTPUT_DIR, "tvbox.json")
         with open(entry_path, "w", encoding="utf-8") as f:
+            json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
+        # 同时写 tvbox_new.json：jsDelivr 对旧路径有硬缓存，新路径作为手机端实际入口
+        new_path = os.path.join(OUTPUT_DIR, "tvbox_new.json")
+        with open(new_path, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
         # 仓库根目录也放一份（历史兼容，FongMi 直接填根路径时可用）
         root_path = os.path.join(ROOT, "config.json")
