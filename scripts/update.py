@@ -447,26 +447,35 @@ def build_cctv_live():
     """逐个央视频道遍历三套官方 CDN，挑出真正能播的地址，生成 FongMi 直播 txt。"""
     from concurrent.futures import ThreadPoolExecutor
 
-    def _pick(item):
+    def _probe_one(item):
         name, code = item
-        best = None
         for cdn in CCTV_CDN:
             url = cdn.format(ch=code)
             ok, ms, n = _cctv_stream_ok(url)
             if ok:
-                best = (name, url, ms, n)
-                break
-        return best
+                return ("hit", name, code, url, ms)
+        return ("miss", name, code, "", 0)
 
     with ThreadPoolExecutor(max_workers=INTL_PROBE_WORKERS) as ex:
-        picked = [x for x in ex.map(_pick, CCTV_CHANNELS) if x]
+        res = list(ex.map(_probe_one, CCTV_CHANNELS))
 
-    print("[cctv] 官网直连可用 %d/%d 个频道" % (len(picked), len(CCTV_CHANNELS)))
+    hits = [x for x in res if x[0] == "hit"]
+    print("[cctv] 官网实测通过 %d/%d 个频道" % (len(hits), len(CCTV_CHANNELS)))
 
-    # 少于阈值 → 央视那边整体异常或本地网络问题，保留旧文件
-    if len(picked) < CCTV_MIN_CHANNELS:
+    # 通过数太少 → 央视整体异常或运行环境网络问题，保留旧文件不覆盖
+    if len(hits) < CCTV_MIN_CHANNELS:
         print("[cctv] 可用频道过少，本次跳过，保留上一次的 cctv_live.txt")
         return None
+
+    # 通过了足够多，说明整体网络正常，个别没测通的按固定地址兜底
+    # （GitHub Actions 跑在境外，部分国内 CDN 探测会失败，但国内手机能连）
+    picked = []
+    for kind, name, code, url, ms in res:
+        if kind == "hit":
+            picked.append((name, url, ms, 1))
+        else:
+            print("[cctv] %s 未测通，用固定地址兜底" % name)
+            picked.append((name, CCTV_CDN[0].format(ch=code), 0, 0))
 
     def _order(x):
         m = re.search(r"CCTV-(\d+)", x[0])
