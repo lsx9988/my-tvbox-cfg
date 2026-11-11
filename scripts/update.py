@@ -724,6 +724,26 @@ def main():
         # 强制壁纸：深蓝渐变暗色图，保证文字可读
         merged["wallpaper"] = "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1920&q=80"
 
+        # 首页顶部提示：更新时间 + 站点数 + 每日寄语
+        QUOTES = [
+            "今天也要开心哦", "慢慢来，比较快", "保持热爱，奔赴山海",
+            "你比想象中更勇敢", "明天会更好", "行动是治愈焦虑的良药",
+            "先完成，再完美", "做难而正确的事", "认真生活，慢慢相遇",
+            "所有的美好都在路上", "别怕，你已经在发光了", "日拱一卒，功不唐捐",
+            "健康第一，其他都是锦上添花", "少熬夜，多喝热水", "今天的努力是明天的底气",
+            "保持好奇，持续学习", "简单的事情重复做", "加油，你是最棒的",
+            "生活总会给你答案", "把日子过成想要的样子", "不负时光，不负自己",
+            "心静如水，遇事不慌", "一步一个脚印", "相信相信的力量",
+            "感恩当下，期待未来", "好好吃饭，好好睡觉", "慢慢来，谁还没有一个努力的过程",
+            "今天也是值得期待的一天", "你只管努力，剩下的交给时间",
+        ]
+        today = time.strftime("%Y-%m-%d")
+        quote = QUOTES[hash(today) % len(QUOTES)]
+        n_sites = len(merged.get("sites", []))
+        n_lives = len(merged.get("lives", []))
+        merged["warningText"] = f"📅 {today} 更新 | {n_sites}站 {n_lives}直播 | 今日寄语：{quote}"
+        print(f"[banner] {merged['warningText']}")
+
         # 再次规范化 + 质量门：只要还有一处类型混合，FongMi 就会整份配置解析失败
         merged = normalize_types(merged)
         conflicts = check_type_conflicts(merged)
