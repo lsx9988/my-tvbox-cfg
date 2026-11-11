@@ -35,35 +35,55 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 | jsDelivr 备用 | `https://gcore.jsdelivr.net/gh/lsx9988/my-tvbox-cfg@main/output/tvbox_new.json` |
 | 只挂国际直播 | `https://lsx9988.github.io/my-tvbox-cfg/output/live_intl.txt` |
 
-## 文件说明
-
-| 文件 | 说明 |
-| --- | --- |
-| `tvbox_new.json` | **主配置**（手机端填这个） |
-| `sites.json` | 纯点播站列表 |
-| `lives.json` | 纯直播源列表 |
-| `live_intl.txt` | 国际频道（2706 个台） |
-| `status.json` | 聚合状态 |
-
 ## 自动更新
 
 - 每天北京时间 **03:00** 自动跑
 - 跑完 1-2 分钟内手机端生效
 - 自动剔死源、加新源、测速排序
+- 旧文件自动清理，只保留必要文件
+
+## 当前源排序（按速度从快到慢）
+
+### 点播 TOP 20
+
+| 排名 | 点播源 |
+| --- | --- |
+| 1 | 影视 | 建安 |
+| 2 | 🎥┃量子┃资源 |
+| 3 | 影视 | 非凡[直连] |
+| 4 | ️天堂┃采集 |
+| 5 | 影视 | 电影天堂 |
+| 6 | 🧡┃初恋┃官源 |
+| 7 | 量子资源(切) |
+| 8 | 影视 | 天涯 |
+| 9 | 影视 | 率率[直连] |
+| 10 | 🎥┃索尼┃资源 |
+| 11 | 🎥┃光速┃资源 |
+| 12 | 新浪资源(切) |
+| 13 | 闪电资源(切) |
+| 14 | 🐉┃索尼┃高清 |
+| 15 | 影视 | 极速[直连] |
+| 16 | 光速资源(切) |
+| 17 | 影视 | 量子[直连] |
+| 18 | 影视 | 暴風[直连] |
+| 19 | 百度 |
+| 20 | 🎥┃豪华┃资源 |
+
+### 直播源
+
+| 排名 | 直播源 |
+| --- | --- |
+| 1 | 国际频道（2706 台） |
+| 2 | 有效期27年7月 |
+| 3 | 音乐所 |
+| 4 | 咪咕 |
+| 5 | 手动不知何时更新 |
+| 6 | 综合直播 |
+| 7 | live |
+| 8 | Kimentanm |
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 16:32:40（北京时间） · 成功 **5/8** 个源
-
-| 源 | 状态 | 地址 |
-| --- | --- | --- |
-| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
-| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
-| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
-| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
-| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
-| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
-| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
-| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+> 🔄 最近更新：2026-11-11 16:00（北京时间） · 成功 **5/8** 个源
 <!-- STATUS_END -->
 
 ---
