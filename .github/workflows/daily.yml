@@ -32,7 +32,9 @@ jobs:
       - name: Purge jsDelivr cache
         if: always()
         run: |
-          for f in output/config.json output/tvbox.json output/live_intl.txt; do
+          for f in output/config.json output/tvbox.json output/tvbox_new.json output/sites.json output/live_intl.txt; do
             curl -sS --max-time 20 "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$f" || true
             echo "purged $f"
           done
+          # 等 CDN 节点同步
+          sleep 30
