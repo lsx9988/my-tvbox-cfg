@@ -43,6 +43,9 @@ USER_AGENT = "Mozilla/5.0"
 # 环境变量 REFRESH_LIVE=1 才真正重抓；工作流在周一（北京时间）自动设 1。
 REFRESH_LIVE = os.environ.get("REFRESH_LIVE", "1").strip() == "1"
 
+SOURCE_MAX = 300      # 单个聚合源最多取多少站，防止异常源撑爆配置
+LITE_MAX = 80         # 精简版保留多少站
+
 TIMEOUT = 15
 MAX_RETRIES = 2
 SITE_PROBE_TIMEOUT = 6      # 单次探测超时（境外机房到国内 CDN 慢，4 秒会误杀）
@@ -696,6 +699,20 @@ def clean_sites(sites, probe=True):
                 dropped_dead.append(s.get("name", "?"))
 
     direct.sort(key=lambda x: (x[0], x[1]))
+    # API 指纹去重：同一个接口换个名字重复出现，只留最快的那条
+    _seen_fp = set()
+    _dedup = []
+    for _dt, _idx, _s in direct:
+        _fp = _api_fp(_s.get("api") or "")
+        if _fp and _fp in _seen_fp:
+            continue
+        if _fp:
+            _seen_fp.add(_fp)
+        _dedup.append((_dt, _idx, _s))
+    _dup_n = len(direct) - len(_dedup)
+    if _dup_n:
+        print(f"   指纹去重：合并 {_dup_n} 条重复接口")
+    direct = _dedup
     unknown.sort(key=lambda x: x[0])
     if len(unknown) > UNKNOWN_MAX:
         dropped_dead.extend([s.get("name", "?") for _, s in unknown[UNKNOWN_MAX:]])
@@ -882,6 +899,69 @@ def merge(fetched):
     return merged
 
 
+def _atomic_write(path, text):
+    """写临时文件再原子替换，避免中途被取消留下半截 JSON。"""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
+def _api_fp(api):
+    """接口指纹：同域名同路径视作同一个源，协议和参数不影响判断。"""
+    try:
+        u = urllib.parse.urlparse(api)
+        if not u.netloc:
+            return ""
+        return (u.netloc + u.path).lower().rstrip("/")
+    except Exception:
+        return ""
+
+
+def _prev_site_count():
+    """上一次发布的站点数，用于降幅保护。"""
+    p = os.path.join(OUTPUT_DIR, "sites.json")
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return len(json.load(f).get("sites", []))
+    except Exception:
+        return 0
+
+
+def validate_config(conf):
+    """生成前的结构烟测，挡住字段缺失、非法 api 这类低级错误。"""
+    errs = []
+    sites = conf.get("sites")
+    if not isinstance(sites, list) or not sites:
+        return ["sites 为空或不是数组"]
+    keys = set()
+    for i, x in enumerate(sites):
+        if not isinstance(x, dict):
+            errs.append("第 %d 条不是对象" % i)
+            continue
+        k = (x.get("key") or "").strip()
+        n = (x.get("name") or "").strip()
+        a = (x.get("api") or "").strip()
+        if not k:
+            errs.append("第 %d 条缺 key" % i)
+        elif k in keys:
+            errs.append("key 重复：%s" % k)
+        else:
+            keys.add(k)
+        if not n:
+            errs.append("第 %d 条缺 name" % i)
+        if x.get("type") == 1 and not a.startswith("http"):
+            errs.append("type=1 但 api 不是 http：%s" % (n or k))
+        if len(errs) > 40:
+            errs.append("...错误过多，已截断")
+            break
+    if not conf.get("parses") and not conf.get("spider"):
+        errs.append("parses 和 spider 都没有，FongMi 会解析失败")
+    return errs
+
+
 def main():
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = json.load(f)
@@ -891,12 +971,12 @@ def main():
 
     fetched = []
     status = []
-    for src in cfg["sources"]:
-        sid = src["id"]
-        name = src["name"]
-        data = None
-        used_url = None
-        err = None
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _grab(src):
+        sid, name = src["id"], src["name"]
+        data, used_url, err = None, None, None
         for url in src["urls"]:
             try:
                 print(f"[{sid}] 尝试 {url} ...")
@@ -905,35 +985,43 @@ def main():
                 break
             except Exception as e:
                 err = str(e)
-                print(f"  失败: {e}")
-                time.sleep(1)
+                print(f"  [{sid}] 失败: {e}")
         if data is None:
-            # 尝试用上次成功的缓存
             cache_path = os.path.join(OUTPUT_DIR, f"{sid}.json")
             if os.path.exists(cache_path):
                 try:
                     with open(cache_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    status.append({"id": sid, "name": name, "ok": True, "cached": True, "error": None})
-                    fetched.append((sid, name, data))
-                    print(f"[{sid}] 沿用缓存")
-                    continue
+                        return sid, name, json.load(f), None, None, True
                 except Exception:
                     pass
+            return sid, name, None, None, err, False
+        data, fixed_n = fix_ext_strings(data)
+        data = normalize_types(data)
+        n_raw = len(data.get("sites", []) or [])
+        if isinstance(data.get("sites"), list) and n_raw > SOURCE_MAX:
+            data["sites"] = data["sites"][:SOURCE_MAX]
+            print(f"  [{sid}] 站点过多（{n_raw}），截到 {SOURCE_MAX}")
+        try:
+            with open(os.path.join(SOURCES_DIR, f"{sid}.json"), "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+        except Exception as e:
+            print(f"  [{sid}] 缓存落盘失败: {e}")
+        return sid, name, data, used_url, None, False
+
+    # 8 个源并发抓：3 个挂掉的源串行各等 20 秒，光等就 60 秒
+    with ThreadPoolExecutor(max_workers=min(8, len(cfg["sources"]))) as ex:
+        results = list(ex.map(_grab, cfg["sources"]))
+    for sid, name, data, used_url, err, cached in results:
+        if data is None:
             status.append({"id": sid, "name": name, "ok": False, "cached": False, "error": err})
             print(f"[{sid}] 全部失败: {err}")
             continue
-
-        data, fixed_n = fix_ext_strings(data)
-        data = normalize_types(data)
-        print(f"[{sid}] 成功，站点 {len(data.get('sites', []))}，修 ext {fixed_n}")
-
-        # 单源落盘（放 _sources/ 子目录，仅用于排错，主功能不依赖）
-        src_path = os.path.join(SOURCES_DIR, f"{sid}.json")
-        with open(src_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-
-        status.append({"id": sid, "name": name, "ok": True, "cached": False, "used_url": used_url})
+        if cached:
+            status.append({"id": sid, "name": name, "ok": True, "cached": True, "error": None})
+            print(f"[{sid}] 沿用缓存")
+        else:
+            status.append({"id": sid, "name": name, "ok": True, "cached": False, "used_url": used_url})
+            print(f"[{sid}] 成功，站点 {len(data.get('sites', []))}")
         fetched.append((sid, name, data))
 
     # 聚合
@@ -1011,32 +1099,52 @@ def main():
                 print("   %s.%s -> %s" % (f, k, c))
             sys.exit(1)
 
-        # 兜底：可达站点过少说明这次探测整体异常（境外机房/源站挂了），保留旧文件别覆盖
-        if len(merged.get("sites", [])) < 100 and os.path.exists(os.path.join(OUTPUT_DIR, "tvbox_new.json")):
-            print("[guard] 可用站点过少（%d），保留上一次的 tvbox_new.json"
-                  % len(merged.get("sites", [])))
+        cur_n = len(merged.get("sites", []))
+        if cur_n < 100 and os.path.exists(os.path.join(OUTPUT_DIR, "tvbox_new.json")):
+            print("[guard] 可用站点过少（%d），保留上一次的 tvbox_new.json" % cur_n)
             return
 
-        # 主配置：tvbox_new.json（GitHub Pages 入口）
+        # 结构烟测：字段缺失、api 非法直接拦下，别把坏配置发出去
+        problems = validate_config(merged)
+        if problems:
+            print("!! 结构校验不通过，本次作废：")
+            for p in problems[:20]:
+                print("   " + p)
+            sys.exit(1)
+
+        # 相对降幅保护：比上次掉超过 30% 就中止，绝对值 100 那个门槛挡不住腰斩
+        prev_n = _prev_site_count()
+        if prev_n and prev_n > 50 and cur_n < prev_n * 0.7:
+            print("[guard] 站点数骤降 %d → %d（-%.0f%%），本次作废，保留旧配置"
+                  % (prev_n, cur_n, 100 * (1 - cur_n / prev_n)))
+            sys.exit(1)
+
+        # 主配置：tvbox_new.json（GitHub Pages 入口），原子写，避免半截文件
         new_path = os.path.join(OUTPUT_DIR, "tvbox_new.json")
-        with open(new_path, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, separators=(",", ":"))
+        _atomic_write(new_path, json.dumps(merged, ensure_ascii=False, separators=(",", ":")))
+
+        # 精简版：只留前 80 个（已按速度排好），手机首次加载和搜索快很多
+        _lite = {k: v for k, v in merged.items() if k != "sites"}
+        _lite["sites"] = merged.get("sites", [])[:LITE_MAX]
+        _atomic_write(os.path.join(OUTPUT_DIR, "tvbox_lite.json"),
+                      json.dumps(_lite, ensure_ascii=False, separators=(",", ":")))
+        print("[lite] 精简版 %d 站" % len(_lite["sites"]))
         print("聚合完成：%d 站，%d 直播（类型校验通过）" % (
             len(merged.get("sites", [])), len(merged.get("lives", []))))
 
         # 额外按类型拆分输出，方便在仓库里直接浏览（FongMi 仍只用 tvbox_new.json）
-        with open(os.path.join(OUTPUT_DIR, "sites.json"), "w", encoding="utf-8") as f:
-            json.dump({"sites": merged.get("sites", [])}, f,
-                      ensure_ascii=False, separators=(",", ":"))
-        with open(os.path.join(OUTPUT_DIR, "lives.json"), "w", encoding="utf-8") as f:
-            json.dump({"lives": merged.get("lives", [])}, f,
-                      ensure_ascii=False, separators=(",", ":"))
+        _atomic_write(os.path.join(OUTPUT_DIR, "sites.json"),
+                      json.dumps({"sites": merged.get("sites", [])},
+                                 ensure_ascii=False, separators=(",", ":")))
+        _atomic_write(os.path.join(OUTPUT_DIR, "lives.json"),
+                      json.dumps({"lives": merged.get("lives", [])},
+                                 ensure_ascii=False, separators=(",", ":")))
         print("已拆分输出 sites.json / lives.json")
 
         # 清理 output 目录里的旧文件，只保留白名单
         KEEP = {
-            "tvbox_new.json", "sites.json", "lives.json",
-            "cctv_live.txt", "status.json", "多仓订阅.json",
+            "tvbox_new.json", "tvbox_lite.json", "sites.json", "lives.json",
+            "cctv_live.txt", "status.json", "多仓订阅.json", "history.json",
         }
         removed = []
         for fn in os.listdir(OUTPUT_DIR):
@@ -1073,11 +1181,38 @@ def main():
     total = len(status)
     site_count = len(merged.get("sites", []))
     live_count = len(merged.get("lives", []))
+    # 历史趋势：每天一行，保留 90 天，用来看源质量是不是在退化
+    hist_path = os.path.join(OUTPUT_DIR, "history.json")
+    hist = []
+    try:
+        if os.path.exists(hist_path):
+            with open(hist_path, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+        if not isinstance(hist, list):
+            hist = []
+    except Exception:
+        hist = []
+    _prof = globals().get("_CCTV_PROFILE")
+    _fast = [dt for _n, dt in (site_speed or [])]
+    hist.append({
+        "date": updated_at[:10],
+        "updated_at": updated_at,
+        "sites": site_count,
+        "sources_ok": ok_count,
+        "cctv": _prof[0] if _prof else 0,
+        "sat": _prof[1] if _prof else 0,
+        "avg_ms": int(sum(_fast) / len(_fast)) if _fast else 0,
+    })
+    hist = hist[-90:]
+    _atomic_write(hist_path, json.dumps(hist, ensure_ascii=False, indent=1))
+    print("[history] 已记录 %d 天" % len(hist))
+
     readme_path = os.path.join(ROOT, "README.md")
 
     # 生成状态块
     status_lines = [
         f"> 🔄 最近更新：{updated_at}（北京时间） · 成功 **{ok_count}/{total}** 个源 · 共 **{site_count}** 站 **{live_count}** 直播",
+        f"> 📱 手机嫌卡就用精简版：`output/tvbox_lite.json`（前 {min(LITE_MAX, site_count)} 个最快站点）",
         "",
         "| 源 | 状态 |",
         "| --- | --- |",
