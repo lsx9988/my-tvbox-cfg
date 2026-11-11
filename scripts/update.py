@@ -23,6 +23,11 @@ try:
 except ImportError:
     os.system(f"{sys.executable} -m pip install requests -q")
     import requests
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except Exception:
+    pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(ROOT, "config", "sources.json")
@@ -235,41 +240,40 @@ def fetch(url):
     raise last
 
 
-# ============ 国际直播（iptv-org 公开频道） ============
-# 说明：iptv-org 是公开的全球 IPTV 频道索引，只收录有公开来源的台。
-# 本脚本把各国 m3u 抓下来，转成 FongMi 支持的 txt（"分组,#genre#" 格式），
-# 托管在本仓库的 output/live_intl.txt，手机只从自己的仓库拉，避免直连 GitHub Pages。
-INTL_FEEDS = [
-    ("国际·中国", "https://iptv-org.github.io/iptv/countries/cn.m3u"),
-    ("国际·香港", "https://iptv-org.github.io/iptv/countries/hk.m3u"),
-    ("国际·台湾", "https://iptv-org.github.io/iptv/countries/tw.m3u"),
-    ("国际·澳门", "https://iptv-org.github.io/iptv/countries/mo.m3u"),
-    ("国际·美国", "https://iptv-org.github.io/iptv/countries/us.m3u"),
-    ("国际·英国", "https://iptv-org.github.io/iptv/countries/uk.m3u"),
-    ("国际·日本", "https://iptv-org.github.io/iptv/countries/jp.m3u"),
-    ("国际·韩国", "https://iptv-org.github.io/iptv/countries/kr.m3u"),
-    ("国际·新加坡", "https://iptv-org.github.io/iptv/countries/sg.m3u"),
-    ("国际·马来西亚", "https://iptv-org.github.io/iptv/countries/my.m3u"),
-    ("国际·泰国", "https://iptv-org.github.io/iptv/countries/th.m3u"),
-    ("国际·越南", "https://iptv-org.github.io/iptv/countries/vn.m3u"),
-    ("国际·印度", "https://iptv-org.github.io/iptv/countries/in.m3u"),
-    ("国际·俄罗斯", "https://iptv-org.github.io/iptv/countries/ru.m3u"),
-    ("国际·德国", "https://iptv-org.github.io/iptv/countries/de.m3u"),
-    ("国际·法国", "https://iptv-org.github.io/iptv/countries/fr.m3u"),
-    ("国际·加拿大", "https://iptv-org.github.io/iptv/countries/ca.m3u"),
-    ("国际·澳大利亚", "https://iptv-org.github.io/iptv/countries/au.m3u"),
-    ("国际·新闻", "https://iptv-org.github.io/iptv/categories/news.m3u"),
-    ("国际·体育", "https://iptv-org.github.io/iptv/categories/sports.m3u"),
-    ("国际·电影", "https://iptv-org.github.io/iptv/categories/movies.m3u"),
-    ("国际·音乐", "https://iptv-org.github.io/iptv/categories/music.m3u"),
-    ("国际·少儿", "https://iptv-org.github.io/iptv/categories/kids.m3u"),
-    ("国际·纪录片", "https://iptv-org.github.io/iptv/categories/documentary.m3u"),
+# ============ 央视直播（央视官网官方 CDN 直连） ============
+# 来源是 tv.cctv.com 直播页实际加载的 m3u8，属于央视自己对外公开的播放地址，
+# 不依赖任何第三方搬运站，只要央视还在播就一直有效。
+# 央视按频道把流量分发到三套云 CDN（腾讯云 / 火山引擎 / 百度云），
+# 每个频道在哪套上可用会变，所以逐频道遍历三套，取第一个能出 TS 分片的。
+CCTV_CHANNELS = [
+    ("CCTV-1 综合", "cctv1"),
+    ("CCTV-2 财经", "cctv2"),
+    ("CCTV-3 综艺", "cctv3"),
+    ("CCTV-4 中文国际", "cctv4"),
+    ("CCTV-5 体育", "cctv5"),
+    ("CCTV-5+ 体育赛事", "cctv5plus"),
+    ("CCTV-6 电影", "cctv6"),
+    ("CCTV-7 国防军事", "cctv7"),
+    ("CCTV-8 电视剧", "cctv8"),
+    ("CCTV-9 纪录", "cctv9"),
+    ("CCTV-10 科教", "cctv10"),
+    ("CCTV-11 戏曲", "cctv11"),
+    ("CCTV-12 社会与法", "cctv12"),
+    ("CCTV-13 新闻", "cctv13"),
+    ("CCTV-14 少儿", "cctv14"),
+    ("CCTV-15 音乐", "cctv15"),
+    ("CCTV-16 奥林匹克", "cctv16"),
+    ("CCTV-17 农业农村", "cctv17"),
+    ("CCTV-4K 超高清", "cctv4k"),
 ]
-INTL_MAX_PER_GROUP = 200      # 每组最多保留多少个频道
-INTL_PROBE = True             # 是否做可达性抽检（丢弃 404/超时的源）
-INTL_PROBE_TIMEOUT = 3.0
-INTL_PROBE_WORKERS = 40
-INTL_PROBE_MAX = 1200         # 最多抽检多少个地址，防止 Actions 跑太久
+CCTV_CDN = [
+    "https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmld{ch}_1_td.m3u8",
+    "https://ldncctvwbcdbyte.volcfcdn.com/ldncctvwbcd/cdrmld{ch}_1/index.m3u8?BR=td",
+    "https://ldcctvwbcdbd.a.bdydns.com/ldcctvwbcd/cdrmld{ch}_1/index.m3u8?BR=td",
+]
+INTL_PROBE_TIMEOUT = 6.0
+INTL_PROBE_WORKERS = 10
+CCTV_MIN_CHANNELS = 5         # 少于这个数就认为本次探测失败，保留旧文件
 
 
 def parse_m3u(text):
@@ -292,103 +296,105 @@ def parse_m3u(text):
 
 
 def _url_alive(url):
-    """探测直播地址是否可达（HEAD 不行就退回 GET 读一小段）。"""
+    """探测直播地址是否可达，返回 (ok, 延迟ms)。"""
+    t0 = time.time()
     try:
         r = requests.head(url, timeout=INTL_PROBE_TIMEOUT, allow_redirects=True,
                           headers={"User-Agent": USER_AGENT})
         if r.status_code < 400:
-            return True
+            return True, int((time.time() - t0) * 1000)
         if r.status_code in (403, 405, 501):
             r2 = requests.get(url, timeout=INTL_PROBE_TIMEOUT, stream=True,
                               allow_redirects=True, headers={"User-Agent": USER_AGENT})
             ok = r2.status_code < 400
             r2.close()
-            return ok
-        return False
+            return ok, int((time.time() - t0) * 1000)
+        return False, 99999
     except Exception:
-        return False
+        return False, 99999
 
 
-def build_intl_live():
-    """抓 iptv-org 各国频道，生成 FongMi 直播 txt，返回一条 lives 条目。"""
-    repo = os.environ.get("GITHUB_REPOSITORY", "lsx9988/my-tvbox-cfg")
-    groups = []
-    total = 0
-    for group, url in INTL_FEEDS:
-        try:
-            r = requests.get(url, timeout=25, headers={"User-Agent": USER_AGENT})
-            if r.status_code != 200:
-                print(f"[intl] {group} 拉取失败 HTTP {r.status_code}")
-                continue
-            chans = parse_m3u(r.text)
-            if not chans:
-                continue
-            # 频道名去重
-            seen = set()
-            uniq = []
-            for n, u in chans:
-                n2 = n.replace(",", " ").replace("#", "").strip() or "频道"
-                if n2 in seen:
-                    continue
-                seen.add(n2)
-                uniq.append((n2, u))
-            uniq = uniq[:INTL_MAX_PER_GROUP]
-            groups.append((group, uniq))
-            total += len(uniq)
-            print(f"[intl] {group}: {len(uniq)} 个")
-        except Exception as e:
-            print(f"[intl] {group} 异常: {e}")
+def _cctv_stream_ok(url, timeout=8):
+    """确认这个 m3u8 真的能出 TS 分片（不是空壳 master），返回 (ok, 延迟ms, 分片数)。"""
+    t0 = time.time()
+    try:
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": USER_AGENT},
+                         verify=False)
+        if r.status_code != 200 or "#EXTM3U" not in r.text:
+            return False, 99999, 0
+        lines = [l.strip() for l in r.text.splitlines()
+                 if l.strip() and not l.startswith("#")]
+        ts = [l for l in lines if ".ts" in l]
+        if ts:
+            return True, int((time.time() - t0) * 1000), len(ts)
+        # 万一给的是 master，跟一层
+        m3 = [l for l in lines if ".m3u8" in l]
+        if m3:
+            sub = m3[0]
+            if sub.startswith("http"):
+                sub_url = sub
+            elif sub.startswith("/"):
+                sub_url = "https://" + url.split("/")[2] + sub
+            else:
+                sub_url = url.rsplit("/", 1)[0] + "/" + sub
+            r2 = requests.get(sub_url, timeout=timeout, headers={"User-Agent": USER_AGENT},
+                              verify=False)
+            if r2.status_code == 200 and ".ts" in r2.text:
+                n = len([l for l in r2.text.splitlines() if ".ts" in l])
+                return True, int((time.time() - t0) * 1000), n
+        return False, 99999, 0
+    except Exception:
+        return False, 99999, 0
 
-    if not groups:
-        print("[intl] 无可用国际源，跳过")
+
+def build_cctv_live():
+    """逐个央视频道遍历三套官方 CDN，挑出真正能播的地址，生成 FongMi 直播 txt。"""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _pick(item):
+        name, code = item
+        best = None
+        for cdn in CCTV_CDN:
+            url = cdn.format(ch=code)
+            ok, ms, n = _cctv_stream_ok(url)
+            if ok:
+                best = (name, url, ms, n)
+                break
+        return best
+
+    with ThreadPoolExecutor(max_workers=INTL_PROBE_WORKERS) as ex:
+        picked = [x for x in ex.map(_pick, CCTV_CHANNELS) if x]
+
+    print("[cctv] 官网直连可用 %d/%d 个频道" % (len(picked), len(CCTV_CHANNELS)))
+
+    # 少于阈值 → 央视那边整体异常或本地网络问题，保留旧文件
+    if len(picked) < CCTV_MIN_CHANNELS:
+        print("[cctv] 可用频道过少，本次跳过，保留上一次的 cctv_live.txt")
         return None
 
-    # 可达性抽检（只抽样前 INTL_PROBE_MAX 个，保证 Actions 时长可控）
-    if INTL_PROBE and total:
-        from concurrent.futures import ThreadPoolExecutor
-        alive = {}
-        budget = INTL_PROBE_MAX
-        to_check = []
-        for g, chans in groups:
-            take = chans[: max(1, budget // max(1, len(groups)))]
-            to_check.extend([(g, n, u) for n, u in take])
-        urls = list({u for _g, _n, u in to_check})
-        try:
-            with ThreadPoolExecutor(max_workers=INTL_PROBE_WORKERS) as ex:
-                res = list(ex.map(_url_alive, urls))
-            alive = dict(zip(urls, res))
-        except Exception as e:
-            print(f"[intl] 抽检异常，跳过测速: {e}")
-            alive = {}
-        if alive:
-            dropped = sum(1 for v in alive.values() if not v)
-            print(f"[intl] 抽检 {len(urls)} 个地址，丢弃 {dropped} 个不可达")
-            groups = [
-                (g, [(n, u) for n, u in chans if alive.get(u, True)])
-                for g, chans in groups
-            ]
+    def _order(x):
+        m = re.search(r"CCTV-(\d+)", x[0])
+        return int(m.group(1)) if m else 99
 
-    # 不要写注释行：FongMi 的 txt 解析按 "名称,地址" 切分，
-    # 任何含逗号的非 #genre# 行都会被当成一个频道，必须保持纯净
-    lines = []
-    kept = 0
-    for group, chans in groups:
-        if not chans:
-            continue
-        lines.append(f"{group},#genre#")
-        for n, u in chans:
-            lines.append(f"{n},{u}")
-            kept += 1
+    picked.sort(key=_order)
 
-    path = os.path.join(OUTPUT_DIR, "live_intl.txt")
+    lines = ["央视频道,#genre#"]
+    for name, url, ms, n in picked:
+        lines.append(name + "," + url)
+    kept = len(picked)
+
+    path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"[intl] 写入 live_intl.txt：{kept} 个频道 / {len(groups)} 组")
+    print("[cctv] 写入 cctv_live.txt：%d 个频道" % kept)
+    print("[cctv] 最快 5 个：%s" % [(x[0], x[2]) for x in picked[:5]])
+
+    globals()["_CCTV_PROFILE"] = (kept, 0, (picked[0][0], picked[0][2]))
 
     return {
-        "name": "国际频道",
-        "url": f"https://fastly.jsdelivr.net/gh/{repo}@main/output/live_intl.txt",
-        "group": "国际",
+        "name": "央视直播",
+        "url": "https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt",
+        "group": "央视",
     }
 
 
@@ -712,14 +718,12 @@ def main():
     # 聚合
     merged = merge(fetched)
     if merged:
-        # 国际直播：抓 iptv-org 生成 live_intl.txt，作为一条 lives 入口
-        intl = build_intl_live()
-        if intl:
-            merged.setdefault("lives", [])
-            names = {x.get("name") for x in merged["lives"] if isinstance(x, dict)}
-            if intl["name"] not in names:
-                merged["lives"].append(intl)
-        # 清洗直播列表
+        # 清空所有旧直播源，只保留央视/卫视
+        merged["lives"] = []
+        cctv = build_cctv_live()
+        if cctv:
+            merged["lives"].append(cctv)
+        # 清洗直播列表（保留刚加的央视条目）
         merged["lives"] = clean_lives(merged.get("lives", []))
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
         merged["sites"], site_speed = clean_sites(merged.get("sites", []))
@@ -774,7 +778,7 @@ def main():
         # 清理 output 目录里的旧文件，只保留白名单
         KEEP = {
             "tvbox_new.json", "sites.json", "lives.json",
-            "live_intl.txt", "status.json", "多仓订阅.json",
+            "cctv_live.txt", "status.json", "多仓订阅.json",
         }
         removed = []
         for fn in os.listdir(OUTPUT_DIR):
@@ -842,11 +846,19 @@ def main():
         speed_str = f"{dt}ms" if dt else "爬虫"
         site_lines.append(f"| {i+1} | {name} | {speed_str} |")
 
-    # 生成直播速率表
-    live_lines = ["", "### 直播源（按速度排序）", "", "| 排名 | 名称 |", "| :---: | --- |"]
-    for i, l in enumerate(merged.get("lives", [])):
-        lname = l.get("name", "?").replace("|", "").strip()
-        live_lines.append(f"| {i+1} | {lname} |")
+    # 生成直播部分：央视官网直连，附最快频道实测延迟
+    live_lines = ["", "### 央视直播（官网直连）", "", "| 项目 | 数量 | 最快频道 | 延迟 |", "| :---: | :---: | --- | :---: |"]
+    tv_profile = globals().get("_CCTV_PROFILE")
+    if tv_profile:
+        cctv_cnt, tv_cnt, fastest = tv_profile
+        live_lines.append(f"| 央视频道 | {cctv_cnt} | {fastest[0]} | {fastest[1]}ms |")
+        live_lines.append("")
+        live_lines.append(f"> 共 **{cctv_cnt}** 个台，直接取央视官网（tv.cctv.com）的播放地址，"
+                          "不依赖任何第三方搬运站；完整列表见 `cctv_live.txt`")
+    else:
+        for i, l in enumerate(merged.get("lives", [])):
+            lname = l.get("name", "?").replace("|", "").strip()
+            live_lines.append(f"| {lname} | — | — | — |")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
