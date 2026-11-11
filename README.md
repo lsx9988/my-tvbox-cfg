@@ -52,18 +52,18 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 - 自动剔死源、加新源、测速排序
 
 <!-- STATUS_START -->
-> 🔄 最近更新：2026-11-11 15:15（北京时间） · 成功 **5/8** 个源
+> 🔄 最近更新：2026-11-11 16:32:40（北京时间） · 成功 **5/8** 个源
 
 | 源 | 状态 | 地址 |
 | --- | --- | --- |
-| 王二小 | ✅ | kstore.dev |
-| 老刘备 | ✅ | raw.liucn.cc |
-| 小马 | ✅ | szyyds.cn |
-| 讴歌 | ❌ | 403 |
-| 4K小盒子 | ✅ | xhztv.top |
-| 小盒子单仓 | ✅ | xhztv.top |
-| 拾光多仓 | ❌ | 非合法配置 |
-| 挺好分享多仓 | ❌ | 非合法配置 |
+| 王二小 | ✅ | `https://d.kstore.dev/download/9280/wex.json` |
+| 老刘备 | ✅ | `https://raw.liucn.cc/box/m.json` |
+| 小马 | ✅ | `https://szyyds.cn/tv/x.json` |
+| 讴歌 | ❌ | 403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog |
+| 4K小盒子 | ✅ | `http://xhztv.top/4k.json` |
+| 小盒子单仓 | ✅ | `http://xhztv.top/xhz` |
+| 拾光多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
+| 挺好分享多仓 | ❌ | 不是 TVBox 配置（缺 sites/spiders/lives） |
 <!-- STATUS_END -->
 
 ---
