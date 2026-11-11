@@ -38,6 +38,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(SOURCES_DIR, exist_ok=True)
 
 USER_AGENT = "Mozilla/5.0"
+# 直播源（央视+卫视）探测最慢：卫视要逐个真抓 TS 分片，境外机房还常超时。
+# 所以直播改成每周刷新一次，其余日子沿用现有的 cctv_live.txt，只更新点播。
+# 环境变量 REFRESH_LIVE=1 才真正重抓；工作流在周一（北京时间）自动设 1。
+REFRESH_LIVE = os.environ.get("REFRESH_LIVE", "1").strip() == "1"
+
 TIMEOUT = 15
 MAX_RETRIES = 2
 SITE_PROBE_TIMEOUT = 6      # 单次探测超时（境外机房到国内 CDN 慢，4 秒会误杀）
@@ -936,7 +941,28 @@ def main():
     if merged:
         # 清空所有旧直播源，只保留央视/卫视
         merged["lives"] = []
-        cctv = build_cctv_live()
+        cctv = None
+        live_path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
+        if REFRESH_LIVE:
+            print("[live] 今天刷新直播源")
+            cctv = build_cctv_live()
+        else:
+            print("[live] 非刷新日，沿用现有直播清单")
+        if not cctv and os.path.exists(live_path):
+            # 没重抓或重抓失败：只要旧文件还在，就继续挂上去，别让直播入口消失
+            cctv = {
+                "name": "央视直播",
+                "url": "https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt",
+                "group": "央视",
+            }
+            rows = [x.strip() for x in open(live_path, encoding="utf-8")
+                    if x.strip() and not x.strip().endswith("#genre#")]
+            chans = set(x.split(",", 1)[0] for x in rows)
+            cctv_cnt = len([n for n in chans if n.startswith("CCTV")])
+            sat_cnt = len([n for n in chans if not n.startswith("CCTV")
+                           and n not in ("央视频道", "卫视频道")])
+            globals()["_CCTV_PROFILE"] = (cctv_cnt, sat_cnt, ("-", 0))
+            print("[live] 沿用 %d 台 / %d 条线路" % (len(chans), len(rows)))
         if cctv:
             merged["lives"].append(cctv)
         # 清洗直播列表（保留刚加的央视条目）
@@ -1083,7 +1109,10 @@ def main():
     tv_profile = globals().get("_CCTV_PROFILE")
     if tv_profile:
         cctv_cnt, tv_cnt, fastest = tv_profile
-        live_lines.append(f"| 央视频道 | {cctv_cnt} | {fastest[0]} | {fastest[1]}ms |")
+        if fastest[1]:
+            live_lines.append(f"| 央视频道 | {cctv_cnt} | {fastest[0]} | {fastest[1]}ms |")
+        else:
+            live_lines.append(f"| 央视频道 | {cctv_cnt} | 沿用上周清单 | — |")
         if tv_cnt:
             live_lines.append(f"| 卫视频道 | {tv_cnt} | — | — |")
         live_lines.append("")
