@@ -1353,9 +1353,29 @@ def main():
 
     readme_path = os.path.join(ROOT, "README.md")
 
+    # 直播台数：lives 里存的是「组」，真实台数要从 cctv_live.txt 的频道名数出来
+    live_total = 0
+    try:
+        _lp = os.path.join(OUTPUT_DIR, "cctv_live.txt")
+        if os.path.exists(_lp):
+            _names = set()
+            with open(_lp, "r", encoding="utf-8") as _f:
+                for _ln in _f:
+                    _ln = _ln.strip()
+                    if not _ln or _ln.endswith(",#genre#"):
+                        continue
+                    _nm = _ln.split(",")[0].strip()
+                    if _nm:
+                        _names.add(_nm)
+            live_total = len(_names)
+    except Exception:
+        live_total = 0
+    if not live_total:
+        live_total = live_count
+
     # 生成状态块
     status_lines = [
-        f"> 🔄 最近更新：{updated_at}（北京时间） · 成功 **{ok_count}/{total}** 个源 · 共 **{site_count}** 站 **{live_count}** 直播",
+        f"> 🔄 最近更新：{updated_at}（北京时间） · 成功 **{ok_count}/{total}** 个源 · 共 **{site_count}** 站 **{live_total}** 台直播",
         f"> 📱 手机嫌卡就用精简版：`output/tvbox_lite.json`（前 {min(LITE_MAX, site_count)} 个最快站点）",
         "",
         "| 源 | 状态 |",
@@ -1405,9 +1425,11 @@ def main():
                 f"> 共 **{cctv_cnt}** 个台，直接取央视官网（tv.cctv.com）的播放地址，"
                 "不依赖任何第三方搬运站；完整列表见 `cctv_live.txt`")
     else:
-        for i, l in enumerate(merged.get("lives", [])):
-            lname = l.get("name", "?").replace("|", "").strip()
-            live_lines.append(f"| {lname} | — | — | — |")
+        live_lines.append(f"| 央视 + 卫视 | {live_total} | 本周沿用上周清单 | — |")
+        live_lines.append("")
+        live_lines.append(
+            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视走运营商 IPTV 公网转播，"
+            "不依赖第三方搬运站；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
@@ -1423,10 +1445,12 @@ def main():
         else:
             # 没有标记，追加到末尾
             readme += "\n\n" + block
+        # 描述性文案跟着功能一起改，避免越写越旧
+        readme = re.sub(r"首页顶部显示[^\n]*",
+                        "首页顶部显示每日一句励志语（随机，每天不同）", readme)
         # 顶部徽章跟着真实数据走，别留写死的旧数字
-        prof2 = globals().get("_CCTV_PROFILE")
         key = f"{site_count} 站"
-        live_n = (prof2[0] + prof2[1]) if prof2 else live_count
+        live_n = live_total
         readme = re.sub(r"badge/sites-[^)]*", "badge/sites-" + urllib.parse.quote(key) + "-green", readme)
         readme = re.sub(r"badge/live-[^)]*", "badge/live-" + urllib.parse.quote(str(live_n) + " 台") + "-orange", readme)
         with open(readme_path, "w", encoding="utf-8") as f:
