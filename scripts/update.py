@@ -15,6 +15,7 @@ import json
 import os
 import random
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -22,7 +23,7 @@ import urllib.parse
 try:
     import requests
 except ImportError:
-    os.system(f"{sys.executable} -m pip install requests -q")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"])
     import requests
 try:
     import urllib3
@@ -1784,7 +1785,8 @@ def main():
         start = "<!-- STATUS_START -->"
         end = "<!-- STATUS_END -->"
         if start in readme and end in readme:
-            readme = re.sub(re.escape(start) + r".*?" + re.escape(end), block, readme, flags=re.S)
+            readme = re.sub(re.escape(start) + r".*?" + re.escape(end),
+                        lambda _m: block, readme, flags=re.S)
         else:
             # 没有标记，追加到末尾
             readme += "\n\n" + block

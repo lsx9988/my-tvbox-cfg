@@ -23,6 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # 两次触发撞一起会 push 冲突，同一时间只跑一个
+    concurrency:
+      group: daily-update
+      cancel-in-progress: false
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,10 +35,12 @@ jobs:
           python-version: '3.11'
       - name: 判断今天是否刷新直播源
         id: gate
+        env:
+          TRIGGER: ${{ github.event_name }}
         run: |
           # 卫视走运营商公网转播，不稳定，每天都重抓；央视官网源也顺手每天校验一次
           echo "refresh=1" >> "$GITHUB_OUTPUT"
-          echo "每天刷新直播源（触发=${{ github.event_name }}）"
+          echo "每天刷新直播源（触发=$TRIGGER）"
       - name: Install deps
         run: pip install requests
       - name: Run update
