@@ -726,8 +726,11 @@ def build_movie_live():
                 good.append((_tier(u), ms, u))
                 continue
             # Actions 跑在境外，国内广电 CDN 大量连接超时/被重置，
-            # 只有明确 403/404 才算真死，其余保留给国内手机自己试
-            if not ok and ("404" in why or "403" in why or "不是m3u8" in why):
+            # 只有明确 404 才算真死，其余保留给国内手机自己试。
+            # 咪咕对境外 IP 直接回 403（国内实测可播），403 对它不算死。
+            if not ok and ("404" in why or "不是m3u8" in why):
+                continue
+            if not ok and "403" in why and "miguvideo" not in u:
                 continue
             # 只有台自己的官方 CDN 才值得兜底：国内广电 CDN 常封境外 IP，
             # 境外测不通不代表国内手机看不了；第三方海外 VPS 测不通就是真死了
