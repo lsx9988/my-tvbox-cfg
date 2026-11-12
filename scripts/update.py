@@ -759,7 +759,12 @@ def build_movie_live():
     with ThreadPoolExecutor(max_workers=16) as ex:
         got = [x for x in ex.map(_probe, list(raw.items())) if x]
 
-    got.sort(key=lambda x: (0 if x[2] else 1, x[1][0][1]))
+    # 排序按「来源级别」而不是「测通与否」：境外测不通的官方 CDN 也要排在
+    # 咪咕/第三方前面，客户端先试的永远是台自己的官方线路
+    def _sort_key(item):
+        return (_tier(item[1][0][0]), item[1][0][1])
+
+    got.sort(key=_sort_key)
     print("[movie] 电影/影视 %d 个台（候选 %d 个）" % (len(got), len(raw)))
     for std, lines, official in got:
         print("  %-16s %d 条  最快 %5dms  %s"
