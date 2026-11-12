@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-12 10:25:22",
+  "updated_at": "2026-11-12 10:49:07",
   "sources": [
     {
       "id": "wangerxiao",
@@ -23,13 +23,6 @@
       "used_url": "https://szyyds.cn/tv/x.json"
     },
     {
-      "id": "ouge",
-      "name": "讴歌",
-      "ok": false,
-      "cached": false,
-      "error": "403 Client Error: Forbidden for url: http://xn--dkw0c.v.nxog.top/m/"
-    },
-    {
       "id": "4k",
       "name": "4K小盒子",
       "ok": true,
@@ -45,17 +38,17 @@
     },
     {
       "id": "shiguang",
-      "name": "拾光多仓",
-      "ok": false,
+      "name": "拾光",
+      "ok": true,
       "cached": false,
-      "error": "不是 TVBox 配置（缺 sites/spiders/lives）"
+      "used_url": "https://jiekou.netlify.app/svip.json"
     },
     {
       "id": "tinghao",
-      "name": "挺好分享多仓",
-      "ok": false,
+      "name": "挺好分享",
+      "ok": true,
       "cached": false,
-      "error": "不是 TVBox 配置（缺 sites/spiders/lives）"
+      "used_url": "https://ztha.top/TVBox/thdjk.json"
     }
   ]
 }

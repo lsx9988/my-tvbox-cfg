@@ -19,6 +19,14 @@
     {
       "name": "小盒子单仓",
       "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/xiaohezi.json"
+    },
+    {
+      "name": "拾光",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/shiguang.json"
+    },
+    {
+      "name": "挺好分享",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/lsx9988/my-tvbox-cfg/main/output/tinghao.json"
     }
   ]
 }

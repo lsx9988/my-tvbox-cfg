@@ -10,11 +10,11 @@
  },
  {
   "date": "2026-11-12",
-  "updated_at": "2026-11-12 10:25:22",
-  "sites": 401,
-  "sources_ok": 5,
+  "updated_at": "2026-11-12 10:49:07",
+  "sites": 652,
+  "sources_ok": 7,
   "cctv": 16,
   "sat": 40,
-  "avg_ms": 357
+  "avg_ms": 566
  }
 ]
