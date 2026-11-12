@@ -1249,7 +1249,7 @@ def main():
                 err = str(e)
                 print(f"  [{sid}] 失败: {e}")
         if data is None:
-            cache_path = os.path.join(OUTPUT_DIR, f"{sid}.json")
+            cache_path = os.path.join(SOURCES_DIR, f"{sid}.json")
             if os.path.exists(cache_path):
                 try:
                     with open(cache_path, "r", encoding="utf-8") as f:

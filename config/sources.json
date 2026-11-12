@@ -1,5 +1,5 @@
 {
-  "description": "TVBox 配置源列表：聚合王二小/老刘备/小马/讴歌/4K小盒子/小盒子/拾光/挺好分享 等公开接口，每日自动更新",
+  "description": "TVBox 配置源列表：聚合王二小/老刘备/小马/4K小盒子/小盒子/拾光/挺好分享 等公开接口，每日自动更新",
   "update_interval_hours": 12,
   "sources": [
     {
@@ -25,14 +25,6 @@
       ]
     },
     {
-      "id": "ouge",
-      "name": "讴歌",
-      "urls": [
-        "http://tv.nxog.top/m/",
-        "http://欧歌.v.nxog.top/m/"
-      ]
-    },
-    {
       "id": "4k",
       "name": "4K小盒子",
       "urls": [
@@ -48,15 +40,17 @@
     },
     {
       "id": "shiguang",
-      "name": "拾光多仓",
+      "name": "拾光",
       "urls": [
+        "https://jiekou.netlify.app/svip.json",
         "http://xmbjm.fh4u.org/dc.txt"
       ]
     },
     {
       "id": "tinghao",
-      "name": "挺好分享多仓",
+      "name": "挺好分享",
       "urls": [
+        "https://ztha.top/TVBox/thdjk.json",
         "http://ztha.top/TVBox/GYCK.json"
       ]
     }
