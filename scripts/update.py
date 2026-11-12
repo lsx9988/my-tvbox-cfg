@@ -731,7 +731,8 @@ def build_movie_live():
                 continue
             # 只有台自己的官方 CDN 才值得兜底：国内广电 CDN 常封境外 IP，
             # 境外测不通不代表国内手机看不了；第三方海外 VPS 测不通就是真死了
-            if any(h in u for h in MOVIE_OFFICIAL_HOSTS):
+            # 咪咕（中国移动持牌转播）同样对境外访问限制明显，国内手机能播
+            if any(h in u for h in MOVIE_OFFICIAL_HOSTS) or "miguvideo" in u:
                 unknown.append((0, 9999, u))
         if good:
             good.sort(key=lambda x: (x[0], x[1]))
