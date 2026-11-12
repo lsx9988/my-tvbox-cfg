@@ -382,6 +382,13 @@ MOVIE_ALIAS = {
 # 官方 CDN 域名：命中即视为官方源，排序最优先
 MOVIE_OFFICIAL_HOSTS = ("tv.cctv.com", "cztv.com", "cztvcloud.com", "nntv.cn",
                         "ahtv.cn", "habctv.com", "hebyun.com.cn", "cnr.cn")
+
+# 聚合源里没收录、但浙江广电自有 CDN 上确实存在的影视频道。
+# channel 编号是逐个抓第 45 帧核过台标确认的（channel05 台标「影视娱乐」）。
+# 这类地址不带签名、不会过期，比咪咕那批稳定。
+MOVIE_PINNED = [
+    ("浙江影视娱乐", "http://ali-m-l.cztv.com/channels/lantian/channel05/1080p.m3u8"),
+]
 MOVIE_LINES_PER_CH = 2     # 每个电影台留几条线路
 MOVIE_MAX_MS = 1800        # 超过这个延迟的线路（多为第三方采集）直接不要
 
@@ -708,6 +715,10 @@ def build_movie_live():
             lst = raw.setdefault(std, [])
             if url not in lst:
                 lst.append(url)
+
+    # 固定官方线路直接进候选（不依赖聚合源是否收录）
+    for _pn, _pu in MOVIE_PINNED:
+        raw.setdefault(_pn, []).append(_pu)
 
     def _tier(u):
         # 0 = 台自己的官方 CDN，1 = 运营商持牌转播（咪咕/IPTV），2 = 其他
