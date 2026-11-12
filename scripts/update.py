@@ -709,26 +709,37 @@ def build_movie_live():
             if url not in lst:
                 lst.append(url)
 
+    def _tier(u):
+        # 0 = 台自己的官方 CDN，1 = 运营商持牌转播（咪咕/IPTV），2 = 其他
+        if any(h in u for h in MOVIE_OFFICIAL_HOSTS):
+            return 0
+        if "miguvideo" in u or any(h in u for h in SAT_TRUST_HOSTS):
+            return 1
+        return 2
+
     def _probe(item):
         std, urls = item
-        good = []
+        good, unknown = [], []
         for u in urls[:8]:
-            ok, ms = _sat_ok(u)
-            if not ok or ms > MOVIE_MAX_MS:
+            ok, ms, _n, why = _cctv_stream_ok(u, timeout=6)
+            if ok and ms <= MOVIE_MAX_MS:
+                good.append((_tier(u), ms, u))
                 continue
-            # 0 = 台自己的官方 CDN，1 = 运营商持牌转播（咪咕/IPTV），2 = 其他
+            # Actions 跑在境外，国内广电 CDN 大量连接超时/被重置，
+            # 只有明确 403/404 才算真死，其余保留给国内手机自己试
+            if not ok and ("404" in why or "403" in why or "不是m3u8" in why):
+                continue
+            # 只有台自己的官方 CDN 才值得兜底：国内广电 CDN 常封境外 IP，
+            # 境外测不通不代表国内手机看不了；第三方海外 VPS 测不通就是真死了
             if any(h in u for h in MOVIE_OFFICIAL_HOSTS):
-                tier = 0
-            elif "miguvideo" in u or any(h in u for h in SAT_TRUST_HOSTS):
-                tier = 1
-            else:
-                tier = 2
-            good.append((tier, ms, u))
-        if not good:
-            return None
-        good.sort(key=lambda x: (x[0], x[1]))
-        official = good[0][0] == 0
-        return (std, [(u, ms) for _t, ms, u in good[:MOVIE_LINES_PER_CH]], official)
+                unknown.append((0, 9999, u))
+        if good:
+            good.sort(key=lambda x: (x[0], x[1]))
+            official = good[0][0] == 0
+            return (std, [(u, ms) for _t, ms, u in good[:MOVIE_LINES_PER_CH]], official)
+        if unknown:
+            return (std, [(u, 9999) for _t, _m, u in unknown[:MOVIE_LINES_PER_CH]], True)
+        return None
 
     with ThreadPoolExecutor(max_workers=16) as ex:
         got = [x for x in ex.map(_probe, list(raw.items())) if x]
