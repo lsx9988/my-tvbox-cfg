@@ -350,6 +350,41 @@ SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2
 SAT_TARGET = 40   # 最多保留多少个卫视
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
 
+# ============ 电影 / 影视频道 ============
+# 官方 CDN 优先，拿不到才退到运营商持牌转播。已实测：
+#   · 央视 / CCTV-6 走 tv.cctv.com（在 build_cctv_live 里处理），官方
+#   · 浙江教科影视 / 东阳影视生活 走 cztv.com / cztvcloud.com —— 浙江广电自己的 CDN，官方
+#   · 南宁影视娱乐 走 hls.nntv.cn —— 南宁广电，官方
+#   · 电影频道官网 m1905.com 直接 403、CHC 官网无响应、江苏/广东/吉林广电的直播页
+#     都是 JS 空壳（静态抓不到地址）→ 这些台只能退到咪咕/IPTV 持牌转播
+#   · 咪咕地址带签名参数（timestamp/encrypt），有效期有限，所以每天重抓
+MOVIE_FEEDS = [
+    "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
+    "m3u|https://raw.githubusercontent.com/Guovin/TV/gd/output/result.m3u",
+]
+
+# 源里的台名 → 统一台名；收录即建立「同一台多源合并」
+MOVIE_ALIAS = {
+    "CHC动作电影":   "CHC 动作电影",
+    "CHC影迷电影":   "CHC 影迷电影",
+    "CHC家庭影院":   "CHC 家庭影院",
+    "南方影视":      "广东影视",        # 台标抓帧实测为「广东影视」，源里叫南方影视
+    "江苏影视频道":  "江苏影视",
+    "江苏影视":      "江苏影视",
+    "吉林影视频道":  "吉林影视",
+    "经典香港电影":  "经典香港电影",
+    "浙江教科影视":  "浙江教科影视",
+    "东阳影视生活":  "东阳影视生活",
+    "南宁影视娱乐":  "南宁影视娱乐",
+    "CCTV6电影":     "CCTV-6 电影",     # 并入央视段，只作备用线路
+}
+
+# 官方 CDN 域名：命中即视为官方源，排序最优先
+MOVIE_OFFICIAL_HOSTS = ("tv.cctv.com", "cztv.com", "cztvcloud.com", "nntv.cn",
+                        "ahtv.cn", "habctv.com", "hebyun.com.cn", "cnr.cn")
+MOVIE_LINES_PER_CH = 2     # 每个电影台留几条线路
+MOVIE_MAX_MS = 1800        # 超过这个延迟的线路（多为第三方采集）直接不要
+
 
 
 # ============ 线路分辨率探测（保证高清线排第一） ============
@@ -622,6 +657,90 @@ def _cctv_stream_ok(url, timeout=8):
         return False, 99999, 0, type(e).__name__
 
 
+def build_movie_live():
+    """抓电影/影视频道。官方 CDN 优先，拿不到才退到运营商持牌转播。
+
+    返回 [(标准台名, [(url, ms), ...], official)]。
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _read_feed(spec):
+        """返回 [(台名, url)]；spec 形如 'txt|url' / 'm3u|url'。"""
+        kind, url = spec.split('|', 1)
+        out = []
+        try:
+            r = requests.get(url, timeout=25, headers={"User-Agent": USER_AGENT},
+                             verify=False)
+            if r.status_code != 200:
+                print("[movie] 源 %s -> HTTP %d" % (url.rsplit('/', 1)[-1], r.status_code))
+                return out
+            if kind == "m3u":
+                pending = None
+                for line in r.text.splitlines():
+                    line = line.strip()
+                    if line.startswith("#EXTINF"):
+                        m = re.search(r",\s*(.+)$", line)
+                        pending = m.group(1).strip() if m else None
+                    elif line.startswith("http") and pending:
+                        out.append((pending, line))
+                        pending = None
+            else:
+                for line in r.text.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "," not in line:
+                        continue
+                    n, u = line.split(",", 1)
+                    n, u = n.strip(), u.strip()
+                    if u.startswith("http"):
+                        out.append((n, u))
+        except Exception as e:
+            print("[movie] 源异常 %s: %s" % (url.rsplit('/', 1)[-1], str(e)[:60]))
+        return out
+
+    raw = {}
+    for spec in MOVIE_FEEDS:
+        for name, url in _read_feed(spec):
+            std = MOVIE_ALIAS.get(name)
+            if not std:
+                continue
+            if any(b in url for b in SAT_BLOCK_HOSTS):
+                continue
+            lst = raw.setdefault(std, [])
+            if url not in lst:
+                lst.append(url)
+
+    def _probe(item):
+        std, urls = item
+        good = []
+        for u in urls[:8]:
+            ok, ms = _sat_ok(u)
+            if not ok or ms > MOVIE_MAX_MS:
+                continue
+            # 0 = 台自己的官方 CDN，1 = 运营商持牌转播（咪咕/IPTV），2 = 其他
+            if any(h in u for h in MOVIE_OFFICIAL_HOSTS):
+                tier = 0
+            elif "miguvideo" in u or any(h in u for h in SAT_TRUST_HOSTS):
+                tier = 1
+            else:
+                tier = 2
+            good.append((tier, ms, u))
+        if not good:
+            return None
+        good.sort(key=lambda x: (x[0], x[1]))
+        official = good[0][0] == 0
+        return (std, [(u, ms) for _t, ms, u in good[:MOVIE_LINES_PER_CH]], official)
+
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        got = [x for x in ex.map(_probe, list(raw.items())) if x]
+
+    got.sort(key=lambda x: (0 if x[2] else 1, x[1][0][1]))
+    print("[movie] 电影/影视 %d 个台（候选 %d 个）" % (len(got), len(raw)))
+    for std, lines, official in got:
+        print("  %-16s %d 条  最快 %5dms  %s"
+              % (std, len(lines), lines[0][1], "官方" if official else "转播"))
+    return got
+
+
 def build_cctv_live():
     """逐个央视频道遍历三套官方 CDN，挑出真正能播的地址，生成 FongMi 直播 txt。"""
     from concurrent.futures import ThreadPoolExecutor
@@ -672,10 +791,20 @@ def build_cctv_live():
 
     picked.sort(key=_order)
 
+    # 电影/影视频道：官方 CDN 拿不到的退回运营商店播转播
+    movies = build_movie_live() or []
+    movie_backup = {}
+    for mname, mlines, _off in movies:
+        movie_backup[mname] = mlines
+
     # 同一个台写多行 → FongMi 会合并成同一频道的多条线路，前一条挂了自动换下一条
     lines = ["央视频道,#genre#"]
     for name, url, ms, n in picked:
         lines.append(name + "," + url)
+        # CCTV-6 官方线在前，运营商转播做备用
+        if name == "CCTV-6 电影":
+            for bu, bms in movie_backup.get(name, []):
+                lines.append(name + "," + bu)
 
     # 卫视：官网不给公开流，用运营商 IPTV 公网转播地址补齐
     sats = build_satellite_live()
@@ -684,9 +813,18 @@ def build_cctv_live():
         for sn, su, sms in sats:
             lines.append(sn + "," + su)
 
+    # 电影频道：单列一组
+    movie_only = [(n, ls, off) for n, ls, off in movies if n != "CCTV-6 电影"]
+    if movie_only:
+        lines.append("电影频道,#genre#")
+        for mname, mlines, _off in movie_only:
+            for mu, mms in mlines:
+                lines.append(mname + "," + mu)
+
     cctv_channels = len(set(x[0] for x in picked))
     sat_channels = len(set(x[0] for x in (sats or [])))
-    kept = cctv_channels + sat_channels
+    movie_channels = len(movie_only)
+    kept = cctv_channels + sat_channels + movie_channels
 
     path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
     with open(path, "w", encoding="utf-8") as f:
@@ -694,7 +832,8 @@ def build_cctv_live():
     print("[cctv] 写入 cctv_live.txt：%d 个频道" % kept)
     print("[cctv] 最快 5 个：%s" % [(x[0], x[2]) for x in picked[:5]])
 
-    globals()["_CCTV_PROFILE"] = (cctv_channels, sat_channels, (picked[0][0], picked[0][2]))
+    globals()["_CCTV_PROFILE"] = (cctv_channels, sat_channels,
+                                  (picked[0][0], picked[0][2]), movie_channels)
 
     return {
         "name": "央视直播",
@@ -1308,10 +1447,26 @@ def main():
             rows = [x.strip() for x in open(live_path, encoding="utf-8")
                     if x.strip() and not x.strip().endswith("#genre#")]
             chans = set(x.split(",", 1)[0] for x in rows)
+            # 按分组统计，否则电影频道会被并进卫视数里
+            _grp, _sat, _mov = "", set(), set()
+            for line in open(live_path, encoding="utf-8"):
+                line = line.strip()
+                if not line:
+                    continue
+                if line.endswith("#genre#"):
+                    _grp = line[:-7].strip()
+                    continue
+                _nm = line.split(",", 1)[0].strip()
+                if _nm.startswith("CCTV"):
+                    continue
+                if _grp == "电影频道":
+                    _mov.add(_nm)
+                else:
+                    _sat.add(_nm)
             cctv_cnt = len([n for n in chans if n.startswith("CCTV")])
-            sat_cnt = len([n for n in chans if not n.startswith("CCTV")
-                           and n not in ("央视频道", "卫视频道")])
-            globals()["_CCTV_PROFILE"] = (cctv_cnt, sat_cnt, ("-", 0))
+            sat_cnt = len(_sat)
+            movie_cnt = len(_mov)
+            globals()["_CCTV_PROFILE"] = (cctv_cnt, sat_cnt, ("-", 0), movie_cnt)
             print("[live] 沿用 %d 台 / %d 条线路" % (len(chans), len(rows)))
         if cctv:
             merged["lives"].append(cctv)
@@ -1374,6 +1529,8 @@ def main():
         prof = globals().get("_CCTV_PROFILE")
         if prof and prof[1]:
             tail = f"{prof[0]}央视+{prof[1]}卫视"
+        if len(prof) > 3 and prof[3]:
+            tail += f"+{prof[3]}电影"
         elif prof:
             tail = f"{prof[0]}央视台"
         else:
@@ -1558,19 +1715,23 @@ def main():
     live_lines = ["", "### 央视直播（官网直连）", "", "| 项目 | 数量 | 最快频道 | 延迟 |", "| :---: | :---: | --- | :---: |"]
     tv_profile = globals().get("_CCTV_PROFILE")
     if tv_profile:
-        cctv_cnt, tv_cnt, fastest = tv_profile
+        cctv_cnt, tv_cnt, fastest = tv_profile[:3]
+        mv_cnt = tv_profile[3] if len(tv_profile) > 3 else 0
         if fastest[1]:
             live_lines.append(f"| 央视频道 | {cctv_cnt} | {fastest[0]} | {fastest[1]}ms |")
         else:
             live_lines.append(f"| 央视频道 | {cctv_cnt} | 沿用上周清单 | — |")
         if tv_cnt:
             live_lines.append(f"| 卫视频道 | {tv_cnt} | — | — |")
+        if mv_cnt:
+            live_lines.append(f"| 电影频道 | {mv_cnt} | — | — |")
         live_lines.append("")
         if tv_cnt:
             live_lines.append(
                 f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
-                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）。"
-                "完整列表见 `cctv_live.txt`")
+                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）"
+                + (f"；电影频道 **{mv_cnt}** 个优先官方，官网无公开流的退回运营商持牌转播" if mv_cnt else "")
+                + "。完整列表见 `cctv_live.txt`")
         else:
             live_lines.append(
                 f"> 共 **{cctv_cnt}** 个台，直接取央视官网（tv.cctv.com）的播放地址，"
