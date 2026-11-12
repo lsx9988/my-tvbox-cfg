@@ -331,6 +331,14 @@ def _url_alive(url):
 # 北京/广东/深圳官网实测都拿不到），芒果TV 等自家 APP 的流带签名+DRM，
 # 无法生成静态地址。这里改用各省广电授权传输的 IPTV 公网转播地址，
 # 同样是官方播出的节目内容，但线路会变，所以每天重新拉、重新测。
+# 实测发现：这台服务器的频道号表整体错位（34 号实际是 CCTV-11、30 号是游戏风云、
+# 29 号是 CCTV-9），但它的延迟最低，不改会一直排在第一位，点开就是错台。
+SAT_BLOCK_HOSTS = ("113.57.140.161:10081",)
+
+# 以下服务器逐条抓画面比对过台标，号表正确，排序时给最高优先级
+SAT_TRUST_HOSTS = ("45.192.97.170:8880", "58.56.162.102:4466", "120.40.39.246:352")
+
+
 SAT_FEEDS = [
     "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
     "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
@@ -506,6 +514,8 @@ def build_satellite_live():
                     continue
                 if not SAT_KEEP.match(name):
                     continue
+                if any(h in url for h in SAT_BLOCK_HOSTS):
+                    continue
                 raw.append((name, url))
         except Exception as e:
             print("[sat] 源异常: %s" % e)
@@ -526,8 +536,13 @@ def build_satellite_live():
                 good.append((w * hh, ms, u))
         if not good:
             return None
-        # 清晰度优先，同清晰度再比延迟
-        good.sort(key=lambda x: (-x[0], x[1]))
+        # 机器识别不出台名，所以先把「实测号表正确」的服务器排前面，
+        # 再比清晰度，最后比延迟
+        def _rank(it):
+            u = it[2]
+            trust = 0 if any(h in u for h in SAT_TRUST_HOSTS) else 1
+            return (trust, -it[0], it[1])
+        good.sort(key=_rank)
         return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]])
 
     with ThreadPoolExecutor(max_workers=20) as ex:
@@ -1589,6 +1604,10 @@ def main():
         live_n = live_total
         readme = re.sub(r"badge/sites-[^)]*", "badge/sites-" + urllib.parse.quote(key) + "-green", readme)
         readme = re.sub(r"badge/live-[^)]*", "badge/live-" + urllib.parse.quote(str(live_n) + " 台") + "-orange", readme)
+        # 功能特点里的台数也是写死的，跟着真实数据走
+        tv_prof = globals().get("_CCTV_PROFILE")
+        if tv_prof:
+            readme = re.sub(r"央视 \d+ 台直连", "央视 %d 台直连" % tv_prof[0], readme)
         with open(readme_path, "w", encoding="utf-8") as f:
             f.write(readme)
     else:
