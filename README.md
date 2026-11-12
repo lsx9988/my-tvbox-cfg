@@ -7,6 +7,9 @@
 ![Sites](https://img.shields.io/badge/sites-652%20%E7%AB%99-green)
 ![Live](https://img.shields.io/badge/live-66%20%E5%8F%B0-orange)
 
+
+> ⚠️ **唯一官方地址：`github.com/lsx9988/my-tvbox-cfg`** ｜ 其它同名仓库、二次打包版、收费版均与本人无关，禁止转售。
+
 ---
 
 ## 📱 配置地址

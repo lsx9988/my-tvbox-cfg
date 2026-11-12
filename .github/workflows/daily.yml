@@ -49,15 +49,6 @@ jobs:
           git add download.html 2>/dev/null || true
           git diff --staged --quiet || git commit -m "daily update $(date -u +%Y-%m-%d)"
           git push
-      # 更新完发一封汇总邮件；没配 Secret 时脚本自动跳过，不会让任务变红
-      - name: 发送更新邮件
-        if: always()
-        env:
-          MAIL_USER: ${{ secrets.MAIL_USER }}
-          MAIL_PASS: ${{ secrets.MAIL_PASS }}
-          MAIL_TO: ${{ secrets.MAIL_TO }}
-          JOB_STATUS: ${{ job.status }}
-        run: python scripts/notify_mail.py
       # jsDelivr 对同一路径有最长 12 小时缓存且忽略 query 参数，主动清理，
       # 避免手机端长时间拉到旧配置
       - name: Purge jsDelivr cache
