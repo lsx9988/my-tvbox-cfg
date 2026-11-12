@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       force_live:
-        description: '强制刷新直播源（平时只有北京时间周一自动刷新）'
+        description: '立即重抓直播源（平时每天自动刷新，此按钮仅用于不等明天）'
         type: boolean
         default: false
   # 改脚本或改本 workflow 后自动跑一次，省得手动点
@@ -29,16 +29,9 @@ jobs:
       - name: 判断今天是否刷新直播源
         id: gate
         run: |
-          BJ_WEEK=$(TZ=Asia/Shanghai date +%u)
-          FORCE="${{ github.event.inputs.force_live }}"
-          EVENT="${{ github.event_name }}"
-          if [ "$FORCE" = "true" ] || [ "$BJ_WEEK" = "1" ] || [ "$EVENT" = "push" ]; then
-            echo "refresh=1" >> "$GITHUB_OUTPUT"
-            echo "今天刷新直播源（触发=${EVENT} 北京周${BJ_WEEK}）"
-          else
-            echo "refresh=0" >> "$GITHUB_OUTPUT"
-            echo "今天不刷新直播源（北京周${BJ_WEEK}），沿用现有 cctv_live.txt"
-          fi
+          # 卫视走运营商公网转播，不稳定，每天都重抓；央视官网源也顺手每天校验一次
+          echo "refresh=1" >> "$GITHUB_OUTPUT"
+          echo "每天刷新直播源（触发=${{ github.event_name }}）"
       - name: Install deps
         run: pip install requests
       - name: Run update
