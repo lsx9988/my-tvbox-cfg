@@ -1,4 +1,4 @@
-name: Daily Update
+name: 抓取直播台
 
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       force_live:
-        description: '立即重抓直播源（平时每天自动刷新，此按钮仅用于不等明天）'
+        description: '立即重抓直播台（平时每天自动刷新，此按钮仅用于不等明天）'
         type: boolean
         default: false
   # 改脚本或改本 workflow 后自动跑一次，省得手动点
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 判断今天是否刷新直播源
+      - name: 抓取直播台：准备直播源刷新
         id: gate
         env:
           TRIGGER: ${{ github.event_name }}
