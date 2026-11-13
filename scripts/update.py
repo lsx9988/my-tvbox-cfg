@@ -340,51 +340,16 @@ SAT_BLOCK_HOSTS = ("113.57.140.161:10081",)
 SAT_TRUST_HOSTS = ("45.192.97.170:8880", "58.56.162.102:4466", "120.40.39.246:352")
 
 
-# 抓取直播台：GitHub 上长期维护的公开直播清单，spec 形如 'txt|url' / 'm3u|url'。
-# 每条线路都要真抓一个 TS 分片验证可播才保留，死线/签名过期线自动剔除。
-# 以下均为运行时拉取的公开清单上游，仓库不复制其成品文件；拉到的地址仍逐条抓 TS
-# 分片实测可播后才收录，死线/签名过期线自动剔除。
 SAT_FEEDS = [
-    "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
-    "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
-    "m3u|https://raw.githubusercontent.com/BurningC4/Chinese-IPTV/master/TV-IPV4.m3u",
-    "m3u|https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
-    # 上游：hujingguang/ChinaIPTV 国内段（仅运行时引用，不搬运成品清单）
-    "m3u|https://raw.githubusercontent.com/hujingguang/ChinaIPTV/main/cnTV2_GuoNei.m3u8",
-    # 上游：Gitee 国内托管公开清单（运行时拉取，不搬运成品；raw 国内直连）
-    "txt|https://gitee.com/OscarWilde/itv/raw/master/tv.txt",
-    "m3u|https://gitee.com/moyongjun/iptv/raw/master/iptv2.m3u",
-    "m3u|https://gitee.com/zhaoweipo/iptv/raw/master/IPTV.m3u8",
-    "txt|https://gitee.com/junho1688/iptv-source/raw/master/cn2.txt",
-    "txt|https://gitee.com/litupthesky/video-source/raw/master/live.txt",
-    "m3u|https://gitee.com/fd305/tv/raw/master/gr.txt",
-    "m3u|https://gitee.com/yayahulu/iptv/raw/master/index.m3u8",
+    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
+    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
 ]
 SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2,6}卫视$|"
                       r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
                       r"天津|重庆|四川|贵州|云南|广西|江西|福建|吉林|辽宁|黑龙江|"
                       r"山西|陕西|甘肃|青海|宁夏|内蒙古|新疆|西藏|海南|东南|南方|三沙|延边|兵团)卫视$")
-SAT_TARGET = 40   # 最多保留多少个实测卫视台
+SAT_TARGET = 40   # 最多保留多少个卫视
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
-SAT_UNKNOWN_MAX = 60    # 兜底保留的卫视台上限：未测通的一律保留标注，不删除
-SAT_OK_TAG = "（可用）"      # 实测抓流通过的台标注
-SAT_UNKNOWN_TAG = "（未实测）"  # 海外探测超时/连不上、兜底保留的台标注
-
-# 源里别名 → 统一台名：同一台多源合并，避免重复占坑
-SAT_ALIAS = {
-    "福建东南卫视": "东南卫视",
-    "农林卫视":     "中国农林卫视",
-    "南方卫视":     "大湾区卫视",
-}
-
-def _clean_live_name(name):
-    """清洗清单台名：去掉「移动」「联通」等方头括号备注、括号渠道后缀与首尾符号。"""
-    if not name:
-        return ""
-    name = re.sub(r"「[^」]*」", "", name)
-    name = re.sub(r"\[[^\]]*\]", "", name)
-    name = re.sub(r"（[^）]*）", "", name)
-    return name.strip(" -_|")
 
 # ============ 电影 / 影视频道 ============
 # 官方 CDN 优先，拿不到才退到运营商持牌转播。已实测：
@@ -564,25 +529,9 @@ def _stream_res(url, timeout=6):
 
 
 def _sat_ok(url, timeout=6):
-    """卫视线路验证：真抓一个 TS 分片才算能播。返回 (ok, 延迟ms, 原因)。"""
+    """卫视线路验证：必须真抓到一个 TS 分片才算能播（只查清单文本会大量假阳性）。"""
     ok, ms, n, why = _cctv_stream_ok(url, timeout=timeout)
-    return ok, ms, why
-
-
-def _sat_is_unknown(why):
-    """海外跑 Actions 时，区分「真死线」和「连不上但可能是网络位置问题（兜底保留）」。
-
-    域名解析失败、明确 4xx、空壳清单、无 ts、ts 过小 → 真死，丢弃；
-    超时 / 连接重置 / SSL / 403·429 / 5xx → 网络位置类，兜底保留并标注未实测。
-    """
-    w = (why or "").lower()
-    if w == "gaierror":
-        return False
-    dead_marks = ("http 400", "http 404", "http 410", "http 451",
-                  "不是m3u8", "清单无内容", "子清单无ts", "ts过小")
-    if any(m in w for m in dead_marks):
-        return False
-    return True
+    return ok, ms
 
 
 def build_satellite_live():
@@ -591,34 +540,28 @@ def build_satellite_live():
 
     raw = []
     for feed in SAT_FEEDS:
-        kind, url = feed.split("|", 1) if "|" in feed else ("txt", feed)
         try:
-            r = requests.get(url, timeout=20, headers={"User-Agent": USER_AGENT},
+            r = requests.get(feed, timeout=20, headers={"User-Agent": USER_AGENT},
                              verify=False)
             if r.status_code != 200:
                 continue
-            entries = parse_m3u(r.text) if kind == "m3u" else []
-            if kind != "m3u":
-                for line in r.text.splitlines():
-                    line = line.strip()
-                    if not line or line.startswith("#") or "," not in line:
-                        continue
-                    n, u = line.split(",", 1)
-                    for seg in u.split("#"):   # 一行内 # 分隔的多条备用线
-                        seg = seg.strip()
-                        if seg:
-                            entries.append((n.strip(), seg))
-            for name, u in entries:
-                name = SAT_ALIAS.get(_clean_live_name(name), _clean_live_name(name))
-                if not u.startswith("http"):
+            for line in r.text.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(",", 1)
+                if len(parts) != 2:
+                    continue
+                name, url = parts[0].strip(), parts[1].strip()
+                if not url.startswith("http"):
                     continue
                 if not SAT_KEEP.match(name):
                     continue
-                if any(h in u for h in SAT_BLOCK_HOSTS):
+                if any(h in url for h in SAT_BLOCK_HOSTS):
                     continue
-                raw.append((name, u))
+                raw.append((name, url))
         except Exception as e:
-            print("[sat] 源异常 %s: %s" % (url, str(e)[:80]))
+            print("[sat] 源异常: %s" % e)
 
     # 同名频道多条线路，全部拿去测，取最快的
     by_name = {}
@@ -626,51 +569,39 @@ def build_satellite_live():
         by_name.setdefault(n, []).append(u)
 
     def _probe(pair):
-        """测一个台的所有候选：实测可播的进 good；超时/连不上的网络位置类进 backup 兜底。"""
+        """一个台测它所有的候选地址，把能播的按延迟排好留最多 3 条。"""
         n, urls = pair
         good = []
-        backup = []
         for u in urls:
-            ok, ms, why = _sat_ok(u)
+            ok, ms = _sat_ok(u)
             if ok:
                 w, hh = _stream_res(u) or (0, 0)
                 good.append((w * hh, ms, u))
-            else:
-                # 未测通的不删除：多为海外探测位置问题，国内网络可能可播，兜底保留并标注
-                backup.append(u)
-        if good:
-            # 机器识别不出台名，先把「实测号表正确」的服务器排前面，再比清晰度、延迟
-            def _rank(it):
-                u = it[2]
-                trust = 0 if any(h in u for h in SAT_TRUST_HOSTS) else 1
-                return (trust, -it[0], it[1])
-            good.sort(key=_rank)
-            return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]], True)
-        if backup:
-            # 未实测兜底：只留第一条，台名加标注，排到实测台之后
-            return (n, [(99999, backup[0])], False)
-        return None
+        if not good:
+            return None
+        # 机器识别不出台名，所以先把「实测号表正确」的服务器排前面，
+        # 再比清晰度，最后比延迟
+        def _rank(it):
+            u = it[2]
+            trust = 0 if any(h in u for h in SAT_TRUST_HOSTS) else 1
+            return (trust, -it[0], it[1])
+        good.sort(key=_rank)
+        return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]])
 
     with ThreadPoolExecutor(max_workers=20) as ex:
         got = [x for x in ex.map(_probe, list(by_name.items())) if x]
 
-    # 实测台排前（按最快线路延迟），兜底未实测台排后，各自设上限
-    verified = [x for x in got if x[2]]
-    unknown = [x for x in got if not x[2]]
-    verified.sort(key=lambda x: x[1][0][0])
-    verified = verified[:SAT_TARGET]
-    unknown = unknown[:SAT_UNKNOWN_MAX]
+    # 按每个台最快的那条排台序，选中前 SAT_TARGET 个台
+    got.sort(key=lambda x: x[1][0][0])
+    got = got[:SAT_TARGET]
 
     out = []
-    for n, lines, _v in verified:
+    for n, lines in got:
         for ms, u in lines:
-            out.append((n + SAT_OK_TAG, u, ms))
-    for n, lines, _v in unknown:
-        for ms, u in lines:
-            out.append((n + SAT_UNKNOWN_TAG, u, ms))
+            out.append((n, u, ms))
 
-    print("[sat] 实测 %d 台 / 兜底未实测 %d 台 / 共 %d 条线路（源里共 %d 个不同卫视）"
-          % (len(verified), len(unknown), len(out), len(by_name)))
+    print("[sat] 卫视 %d 个台 / %d 条线路（源里共 %d 个不同卫视）"
+          % (len(got), len(out), len(by_name)))
     return out
 
 
@@ -1838,7 +1769,7 @@ def main():
         if tv_cnt:
             live_lines.append(
                 f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
-                f"卫视 **{tv_cnt}** 个线路取自 GitHub/Gitee 公开清单与运营商 IPTV 公网转播；标注（可用）为实测抓流通过、排前，标注（未实测）为境外探测超时、保留待本地网络验证、排后"
+                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）"
                 + (f"；电影频道 **{mv_cnt}** 个优先官方，官网无公开流的退回运营商持牌转播" if mv_cnt else "")
                 + "。完整列表见 `cctv_live.txt`")
         else:
@@ -1849,8 +1780,8 @@ def main():
         live_lines.append(f"| 央视 + 卫视 | {live_total} | 本周沿用上周清单 | — |")
         live_lines.append("")
         live_lines.append(
-            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视取自 GitHub/Gitee 公开清单与运营商 IPTV 公网转播，"
-            "实测通过标（可用）排前、境外探测超时标（未实测）排后；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
+            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视走运营商 IPTV 公网转播，"
+            "不依赖第三方搬运站；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
