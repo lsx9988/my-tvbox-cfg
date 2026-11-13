@@ -351,6 +351,14 @@ SAT_FEEDS = [
     "m3u|https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
     # 上游：hujingguang/ChinaIPTV 国内段（仅运行时引用，不搬运成品清单）
     "m3u|https://raw.githubusercontent.com/hujingguang/ChinaIPTV/main/cnTV2_GuoNei.m3u8",
+    # 上游：Gitee 国内托管公开清单（运行时拉取，不搬运成品；raw 国内直连）
+    "txt|https://gitee.com/OscarWilde/itv/raw/master/tv.txt",
+    "m3u|https://gitee.com/moyongjun/iptv/raw/master/iptv2.m3u",
+    "m3u|https://gitee.com/zhaoweipo/iptv/raw/master/IPTV.m3u8",
+    "txt|https://gitee.com/junho1688/iptv-source/raw/master/cn2.txt",
+    "txt|https://gitee.com/litupthesky/video-source/raw/master/live.txt",
+    "m3u|https://gitee.com/fd305/tv/raw/master/gr.txt",
+    "m3u|https://gitee.com/yayahulu/iptv/raw/master/index.m3u8",
 ]
 SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2,6}卫视$|"
                       r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
@@ -359,7 +367,15 @@ SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2
 SAT_TARGET = 40   # 最多保留多少个实测卫视台
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
 SAT_UNKNOWN_MAX = 40    # 兜底保留的卫视台上限：放开到覆盖全部候选，未实测台排最后并标注
-SAT_UNKNOWN_TAG = "（未实测）"
+SAT_OK_TAG = "（可用）"      # 实测抓流通过的台标注
+SAT_UNKNOWN_TAG = "（未实测）"  # 海外探测超时/连不上、兜底保留的台标注
+
+# 源里别名 → 统一台名：同一台多源合并，避免重复占坑
+SAT_ALIAS = {
+    "福建东南卫视": "东南卫视",
+    "农林卫视":     "中国农林卫视",
+    "南方卫视":     "大湾区卫视",
+}
 
 
 def _clean_live_name(name):
@@ -589,9 +605,12 @@ def build_satellite_live():
                     if not line or line.startswith("#") or "," not in line:
                         continue
                     n, u = line.split(",", 1)
-                    entries.append((n.strip(), u.strip()))
+                    for seg in u.split("#"):   # 一行内 # 分隔的多条备用线
+                        seg = seg.strip()
+                        if seg:
+                            entries.append((n.strip(), seg))
             for name, u in entries:
-                name = _clean_live_name(name)
+                name = SAT_ALIAS.get(_clean_live_name(name), _clean_live_name(name))
                 if not u.startswith("http"):
                     continue
                 if not SAT_KEEP.match(name):
@@ -645,7 +664,7 @@ def build_satellite_live():
     out = []
     for n, lines, _v in verified:
         for ms, u in lines:
-            out.append((n, u, ms))
+            out.append((n + SAT_OK_TAG, u, ms))
     for n, lines, _v in unknown:
         for ms, u in lines:
             out.append((n + SAT_UNKNOWN_TAG, u, ms))
@@ -1819,7 +1838,7 @@ def main():
         if tv_cnt:
             live_lines.append(
                 f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
-                f"卫视 **{tv_cnt}** 个线路取自 GitHub 公开直播清单与运营商 IPTV 公网转播；实测可播的排前，标注（未实测）的为境外探测超时、保留待本地网络验证的线路"
+                f"卫视 **{tv_cnt}** 个线路取自 GitHub/Gitee 公开清单与运营商 IPTV 公网转播；标注（可用）为实测抓流通过、排前，标注（未实测）为境外探测超时、保留待本地网络验证、排后"
                 + (f"；电影频道 **{mv_cnt}** 个优先官方，官网无公开流的退回运营商持牌转播" if mv_cnt else "")
                 + "。完整列表见 `cctv_live.txt`")
         else:
