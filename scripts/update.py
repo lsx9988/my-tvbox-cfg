@@ -377,7 +377,6 @@ SAT_ALIAS = {
     "南方卫视":     "大湾区卫视",
 }
 
-
 def _clean_live_name(name):
     """清洗清单台名：去掉「移动」「联通」等方头括号备注、括号渠道后缀与首尾符号。"""
     if not name:
@@ -619,7 +618,7 @@ def build_satellite_live():
                     continue
                 raw.append((name, u))
         except Exception as e:
-            print("[sat] 源异常: %s" % e)
+            print("[sat] 源异常 %s: %s" % (url, str(e)[:80]))
 
     # 同名频道多条线路，全部拿去测，取最快的
     by_name = {}
@@ -636,7 +635,8 @@ def build_satellite_live():
             if ok:
                 w, hh = _stream_res(u) or (0, 0)
                 good.append((w * hh, ms, u))
-            elif _sat_is_unknown(why):
+            else:
+                # 未测通的不删除：多为海外探测位置问题，国内网络可能可播，兜底保留并标注
                 backup.append(u)
         if good:
             # 机器识别不出台名，先把「实测号表正确」的服务器排前面，再比清晰度、延迟
@@ -1849,8 +1849,8 @@ def main():
         live_lines.append(f"| 央视 + 卫视 | {live_total} | 本周沿用上周清单 | — |")
         live_lines.append("")
         live_lines.append(
-            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视取自 GitHub 公开清单与运营商 IPTV 公网转播，"
-            "逐条抓流验证；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
+            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视取自 GitHub/Gitee 公开清单与运营商 IPTV 公网转播，"
+            "实测通过标（可用）排前、境外探测超时标（未实测）排后；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
