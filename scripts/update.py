@@ -342,11 +342,15 @@ SAT_TRUST_HOSTS = ("45.192.97.170:8880", "58.56.162.102:4466", "120.40.39.246:35
 
 # 抓取直播台：GitHub 上长期维护的公开直播清单，spec 形如 'txt|url' / 'm3u|url'。
 # 每条线路都要真抓一个 TS 分片验证可播才保留，死线/签名过期线自动剔除。
+# 以下均为运行时拉取的公开清单上游，仓库不复制其成品文件；拉到的地址仍逐条抓 TS
+# 分片实测可播后才收录，死线/签名过期线自动剔除。
 SAT_FEEDS = [
     "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
     "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
     "m3u|https://raw.githubusercontent.com/BurningC4/Chinese-IPTV/master/TV-IPV4.m3u",
     "m3u|https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
+    # 上游：hujingguang/ChinaIPTV 国内段（仅运行时引用，不搬运成品清单）
+    "m3u|https://raw.githubusercontent.com/hujingguang/ChinaIPTV/main/cnTV2_GuoNei.m3u8",
 ]
 SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2,6}卫视$|"
                       r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
