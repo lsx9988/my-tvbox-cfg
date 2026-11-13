@@ -340,9 +340,13 @@ SAT_BLOCK_HOSTS = ("113.57.140.161:10081",)
 SAT_TRUST_HOSTS = ("45.192.97.170:8880", "58.56.162.102:4466", "120.40.39.246:352")
 
 
+# 抓取直播台：GitHub 上长期维护的公开直播清单，spec 形如 'txt|url' / 'm3u|url'。
+# 每条线路都要真抓一个 TS 分片验证可播才保留，死线/签名过期线自动剔除。
 SAT_FEEDS = [
-    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
-    "https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
+    "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live.txt",
+    "txt|https://raw.githubusercontent.com/Supprise0901/TVBox_live/main/live_ipv4.txt",
+    "m3u|https://raw.githubusercontent.com/BurningC4/Chinese-IPTV/master/TV-IPV4.m3u",
+    "m3u|https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
 ]
 SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2,6}卫视$|"
                       r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
@@ -350,6 +354,16 @@ SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2
                       r"山西|陕西|甘肃|青海|宁夏|内蒙古|新疆|西藏|海南|东南|南方|三沙|延边|兵团)卫视$")
 SAT_TARGET = 40   # 最多保留多少个卫视
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
+
+
+def _clean_live_name(name):
+    """清洗清单台名：去掉「移动」「联通」等方头括号备注、括号渠道后缀与首尾符号。"""
+    if not name:
+        return ""
+    name = re.sub(r"「[^」]*」", "", name)
+    name = re.sub(r"\[[^\]]*\]", "", name)
+    name = re.sub(r"（[^）]*）", "", name)
+    return name.strip(" -_|")
 
 # ============ 电影 / 影视频道 ============
 # 官方 CDN 优先，拿不到才退到运营商持牌转播。已实测：
@@ -540,26 +554,29 @@ def build_satellite_live():
 
     raw = []
     for feed in SAT_FEEDS:
+        kind, url = feed.split("|", 1) if "|" in feed else ("txt", feed)
         try:
-            r = requests.get(feed, timeout=20, headers={"User-Agent": USER_AGENT},
+            r = requests.get(url, timeout=20, headers={"User-Agent": USER_AGENT},
                              verify=False)
             if r.status_code != 200:
                 continue
-            for line in r.text.splitlines():
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                parts = line.split(",", 1)
-                if len(parts) != 2:
-                    continue
-                name, url = parts[0].strip(), parts[1].strip()
-                if not url.startswith("http"):
+            entries = parse_m3u(r.text) if kind == "m3u" else []
+            if kind != "m3u":
+                for line in r.text.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "," not in line:
+                        continue
+                    n, u = line.split(",", 1)
+                    entries.append((n.strip(), u.strip()))
+            for name, u in entries:
+                name = _clean_live_name(name)
+                if not u.startswith("http"):
                     continue
                 if not SAT_KEEP.match(name):
                     continue
-                if any(h in url for h in SAT_BLOCK_HOSTS):
+                if any(h in u for h in SAT_BLOCK_HOSTS):
                     continue
-                raw.append((name, url))
+                raw.append((name, u))
         except Exception as e:
             print("[sat] 源异常: %s" % e)
 
@@ -868,9 +885,9 @@ def build_cctv_live():
                                   (picked[0][0], picked[0][2]), movie_channels)
 
     return {
-        "name": "央视直播",
+        "name": "抓取直播台",
         "url": "https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt",
-        "group": "央视",
+        "group": "直播台",
     }
 
 
@@ -1472,9 +1489,9 @@ def main():
         if not cctv and os.path.exists(live_path):
             # 没重抓或重抓失败：只要旧文件还在，就继续挂上去，别让直播入口消失
             cctv = {
-                "name": "央视直播",
+                "name": "抓取直播台",
                 "url": "https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt",
-                "group": "央视",
+                "group": "直播台",
             }
             rows = [x.strip() for x in open(live_path, encoding="utf-8")
                     if x.strip() and not x.strip().endswith("#genre#")]
@@ -1752,7 +1769,7 @@ def main():
         site_lines.append(f"| {i+1} | {name} | {speed_str} |")
 
     # 生成直播部分：央视官网直连，附最快频道实测延迟
-    live_lines = ["", "### 央视直播（官网直连）", "", "| 项目 | 数量 | 最快频道 | 延迟 |", "| :---: | :---: | --- | :---: |"]
+    live_lines = ["", "### 抓取直播台", "", "| 项目 | 数量 | 最快频道 | 延迟 |", "| :---: | :---: | --- | :---: |"]
     tv_profile = globals().get("_CCTV_PROFILE")
     if tv_profile:
         cctv_cnt, tv_cnt, fastest = tv_profile[:3]
@@ -1769,7 +1786,7 @@ def main():
         if tv_cnt:
             live_lines.append(
                 f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
-                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）"
+                f"卫视 **{tv_cnt}** 个线路取自 GitHub 公开直播清单与运营商 IPTV 公网转播，逐条抓流验证可播后保留"
                 + (f"；电影频道 **{mv_cnt}** 个优先官方，官网无公开流的退回运营商持牌转播" if mv_cnt else "")
                 + "。完整列表见 `cctv_live.txt`")
         else:
@@ -1780,8 +1797,8 @@ def main():
         live_lines.append(f"| 央视 + 卫视 | {live_total} | 本周沿用上周清单 | — |")
         live_lines.append("")
         live_lines.append(
-            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视走运营商 IPTV 公网转播，"
-            "不依赖第三方搬运站；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
+            f"> 共 **{live_total}** 台：央视直连官方 CDN，卫视取自 GitHub 公开清单与运营商 IPTV 公网转播，"
+            "逐条抓流验证；每**周一**自动重测刷新，完整列表见 `cctv_live.txt`")
 
     block = "<!-- STATUS_START -->\n" + "\n".join(status_lines) + "\n" + "\n".join(site_lines) + "\n" + "\n".join(live_lines) + "\n<!-- STATUS_END -->"
 
