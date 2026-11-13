@@ -1,18 +1,18 @@
 央视频道,#genre#
-CCTV-1 综合,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv1_1_td.m3u8
+CCTV-1 综合,https://ldncctvwbcdbyte.volcfcdn.com/ldncctvwbcd/cdrmldcctv1_1/index.m3u8?BR=td
 CCTV-2 财经,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv2_1_td.m3u8
 CCTV-3 综艺,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv3_1_td.m3u8
 CCTV-4 中文国际,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv4_1_td.m3u8
 CCTV-4K 超高清,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv4k_1_td.m3u8
 CCTV-6 电影,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv6_1_td.m3u8
-CCTV-6 电影,http://hlsztemgsplive.miguvideo.com:8080/wd_r2/2018/ocn/cctv6hd/1000/index.m3u8?msisdn=20261113040114dcf9a1ab0aea4becafc4cb611190b163&mdspid=&spid=699004&netType=0&sid=5500212872&pid=2028597139&timestamp=20261113040114&Channel_ID=0116_2600000900-99000-201600010010027&ProgramID=624878396&ParentNodeID=-99&assertID=5500212872&client_ip=171.8.79.254&SecurityKey=20261113040114&promotionId=&mvid=5100001694&mcid=500020&playurlVersion=WX-A1-9.10.1-SNAPSHOT&userid=&jmhm=&videocodec=h264&appCode=miguvideo_android&bean=mgspad&tid=android&conFee=0&encrypt=5ce26262ec0665d5e714ec14f8838eef
+CCTV-6 电影,http://hlsztemgsplive.miguvideo.com:8080/wd_r2/2018/ocn/cctv6hd/1000/index.m3u8?msisdn=202611130801135504a520ddec473bb2254acddb2203ab&mdspid=&spid=699004&netType=0&sid=5500212872&pid=2028597139&timestamp=20261113080113&Channel_ID=0116_2600000900-99000-201600010010027&ProgramID=624878396&ParentNodeID=-99&assertID=5500212872&client_ip=171.8.79.254&SecurityKey=20261113080113&promotionId=&mvid=5100001694&mcid=500020&playurlVersion=WX-A1-9.10.1-SNAPSHOT&userid=&jmhm=&videocodec=h264&appCode=miguvideo_android&bean=mgspad&tid=android&conFee=0&encrypt=a3045e6b13dae8ea539d4f0569e8b82c
 CCTV-7 国防军事,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv7_1_td.m3u8
 CCTV-8 电视剧,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv8_1_td.m3u8
 CCTV-9 纪录,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv9_1_td.m3u8
 CCTV-10 科教,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv10_1_td.m3u8
 CCTV-11 戏曲,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv11_1_td.m3u8
 CCTV-12 社会与法,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv12_1_td.m3u8
-CCTV-13 新闻,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv13_1_td.m3u8
+CCTV-13 新闻,https://ldncctvwbcdbyte.volcfcdn.com/ldncctvwbcd/cdrmldcctv13_1/index.m3u8?BR=td
 CCTV-14 少儿,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv14_1_td.m3u8
 CCTV-15 音乐,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv15_1_td.m3u8
 CCTV-17 农业农村,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cdrmldcctv17_1_td.m3u8
@@ -20,22 +20,22 @@ CCTV-17 农业农村,https://ldocctvwbcdtxy.liveplay.myqcloud.com/ldocctvwbcd/cd
 广西卫视,https://hlscdn.liangtv.cn/live/0c4ef3a44b934cacb8b47121dfada66c/d7e04258157b480dae53883cc6f8123b.m3u8
 广西卫视,https://hlscdn.liangtv.cn/live/de0f97348eb84f62aa6b7d8cf0430770/dd505d87880c478f901f38560ca4d4e6.m3u8
 江西卫视,http://112.27.5.218:9901/tsfile/live/faacts/0138_1.m3u8?key=txiptv&playlive=1&authid=0
-深圳卫视,http://120.238.94.82:9901/tsfile/live/1065_1.m3u8
 天津卫视,http://153.0.171.163:9901/tsfile/live/0135_1.m3u8?key=txiptv&playlive=1&authid=0
-四川卫视,http://113.25.252.226:9901/tsfile/live/1031_1.m3u8?key=txiptv&playlive=1&authid=0
+深圳卫视,http://120.238.94.82:9901/tsfile/live/1065_1.m3u8
 贵州卫视,http://58.56.162.102:4466/newlive/live/hls/41/live.m3u8
-吉林卫视,http://113.25.252.226:9901/tsfile/live/1037_1.m3u8?key=txiptv&playlive=1&authid=0
 江苏卫视,http://118.122.144.115:8888/newlive/live/hls/31/live.m3u8
 山西卫视,http://222.134.245.16:9901/tsfile/live/0118_1.m3u8?key=txiptv&playlive=1&authid=0
-河南卫视,http://tvcdn.stream3.hndt.com/tv/65c4a6d5017e1000b2b6ea2500000000_transios/playlist.m3u8?wsSecret=702cef1693a3a4beb5ea3804022b1ba6&wsTime=1794539073
+四川卫视,http://113.25.252.226:9901/tsfile/live/1031_1.m3u8?key=txiptv&playlive=1&authid=0
+吉林卫视,http://113.25.252.226:9901/tsfile/live/1037_1.m3u8?key=txiptv&playlive=1&authid=0
+河北卫视,http://event.pull.hebtv.com/jishi/weishi_tingyun.m3u8
+河南卫视,http://tvcdn.stream3.hndt.com/tv/65c4a6d5017e1000b2b6ea2500000000_transios/playlist.m3u8?wsSecret=bab716d54a694f001be4b5a53f9d2c98&wsTime=1794542594
+东南卫视,http://live.zohi.tv/video/s10001-fztv-3/index.m3u8
 延边卫视,https://srs.iyb983.cn/video/CYS/index.m3u8
 延边卫视,https://srs.iyb983.cn:443/video/CYS/index.m3u8
-河北卫视,http://event.pull.hebtv.com/jishi/weishi_tingyun.m3u8
-东南卫视,http://live.zohi.tv/video/s10001-fztv-3/index.m3u8
 凤凰卫视,http://122.152.202.33/s/81a8a44f/index.m3u8?id=15
+浙江卫视,http://ali-xwl.cztv.com/live/channel011080Plxw.m3u8
 内蒙古卫视,http://play1-qk.nmtv.cn/live/1769652018126032.m3u8
 安多卫视,https://liveout.xntv.tv/a65jur/96iln2.m3u8
-浙江卫视,http://ali-xwl.cztv.com/live/channel011080Plxw.m3u8
 电影频道,#genre#
 浙江教科影视,http://ali-m-l.cztv.com/channels/lantian/channel04/1080p.m3u8
 东阳影视生活,http://l.cztvcloud.com/channels/lantian/SXdongyang1/720p.m3u8
