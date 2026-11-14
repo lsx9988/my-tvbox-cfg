@@ -348,8 +348,11 @@ SAT_KEEP = re.compile(r"^[\u4e00-\u9fa5（）()]{2,10}卫视$|^[\u4e00-\u9fa5]{2
                       r"^(湖南|浙江|江苏|东方|北京|广东|深圳|安徽|山东|湖北|河南|河北|"
                       r"天津|重庆|四川|贵州|云南|广西|江西|福建|吉林|辽宁|黑龙江|"
                       r"山西|陕西|甘肃|青海|宁夏|内蒙古|新疆|西藏|海南|东南|南方|三沙|延边|兵团)卫视$")
-SAT_TARGET = 40   # 最多保留多少个卫视
+SAT_TARGET = 40   # 最多保留多少个实测卫视台
 SAT_LINES_PER_CH = 3   # 每个卫视台最多保留几条备用线路
+SAT_UNKNOWN_MAX = 60    # 兜底保留的卫视台上限：未测通的保留标注，不删除
+SAT_OK_TAG = "（可用）"      # 实测抓流通过的台标注
+SAT_UNKNOWN_TAG = "（未实测）"  # 探测超时/连不上、兜底保留的台标注
 
 # ============ 电影 / 影视频道 ============
 # 官方 CDN 优先，拿不到才退到运营商持牌转播。已实测：
@@ -529,9 +532,9 @@ def _stream_res(url, timeout=6):
 
 
 def _sat_ok(url, timeout=6):
-    """卫视线路验证：必须真抓到一个 TS 分片才算能播（只查清单文本会大量假阳性）。"""
+    """卫视线路验证：真抓一个 TS 分片才算能播。返回 (ok, 延迟ms, 原因)。"""
     ok, ms, n, why = _cctv_stream_ok(url, timeout=timeout)
-    return ok, ms
+    return ok, ms, why
 
 
 def build_satellite_live():
@@ -569,39 +572,50 @@ def build_satellite_live():
         by_name.setdefault(n, []).append(u)
 
     def _probe(pair):
-        """一个台测它所有的候选地址，把能播的按延迟排好留最多 3 条。"""
+        """测一个台的所有候选：实测可播的进 good；测不通的进 backup 兜底保留。"""
         n, urls = pair
         good = []
+        backup = []
         for u in urls:
-            ok, ms = _sat_ok(u)
+            ok, ms, why = _sat_ok(u)
             if ok:
                 w, hh = _stream_res(u) or (0, 0)
                 good.append((w * hh, ms, u))
-        if not good:
-            return None
-        # 机器识别不出台名，所以先把「实测号表正确」的服务器排前面，
-        # 再比清晰度，最后比延迟
-        def _rank(it):
-            u = it[2]
-            trust = 0 if any(h in u for h in SAT_TRUST_HOSTS) else 1
-            return (trust, -it[0], it[1])
-        good.sort(key=_rank)
-        return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]])
+            else:
+                backup.append(u)
+        if good:
+            # 机器识别不出台名，先把「实测号表正确」的服务器排前面，再比清晰度、延迟
+            def _rank(it):
+                u = it[2]
+                trust = 0 if any(h in u for h in SAT_TRUST_HOSTS) else 1
+                return (trust, -it[0], it[1])
+            good.sort(key=_rank)
+            return (n, [(ms, u) for _area, ms, u in good[:SAT_LINES_PER_CH]], True)
+        if backup:
+            # 未实测兜底：只留第一条，台名加标注，排到实测台之后
+            return (n, [(99999, backup[0])], False)
+        return None
 
     with ThreadPoolExecutor(max_workers=20) as ex:
         got = [x for x in ex.map(_probe, list(by_name.items())) if x]
 
-    # 按每个台最快的那条排台序，选中前 SAT_TARGET 个台
-    got.sort(key=lambda x: x[1][0][0])
-    got = got[:SAT_TARGET]
+    # 实测台排前（按最快线路延迟），兜底未实测台排后，各自设上限
+    verified = [x for x in got if x[2]]
+    unknown = [x for x in got if not x[2]]
+    verified.sort(key=lambda x: x[1][0][0])
+    verified = verified[:SAT_TARGET]
+    unknown = unknown[:SAT_UNKNOWN_MAX]
 
     out = []
-    for n, lines in got:
+    for n, lines, _v in verified:
         for ms, u in lines:
-            out.append((n, u, ms))
+            out.append((n + SAT_OK_TAG, u, ms))
+    for n, lines, _v in unknown:
+        for ms, u in lines:
+            out.append((n + SAT_UNKNOWN_TAG, u, ms))
 
-    print("[sat] 卫视 %d 个台 / %d 条线路（源里共 %d 个不同卫视）"
-          % (len(got), len(out), len(by_name)))
+    print("[sat] 实测 %d 台 / 兜底未实测 %d 台 / 共 %d 条线路（源里共 %d 个不同卫视）"
+          % (len(verified), len(unknown), len(out), len(by_name)))
     return out
 
 
@@ -1769,7 +1783,7 @@ def main():
         if tv_cnt:
             live_lines.append(
                 f"> 央视 **{cctv_cnt}** 个台直连央视官网（tv.cctv.com）CDN，不依赖任何第三方；"
-                f"卫视 **{tv_cnt}** 个用的是运营商 IPTV 公网转播地址（各卫视官网实测不提供公开 m3u8）"
+                f"卫视 **{tv_cnt}** 个取自公开清单与运营商 IPTV 公网转播；标注（可用）为实测抓流通过、排前，标注（未实测）为探测超时、保留待本地网络验证、排后"
                 + (f"；电影频道 **{mv_cnt}** 个优先官方，官网无公开流的退回运营商持牌转播" if mv_cnt else "")
                 + "。完整列表见 `cctv_live.txt`")
         else:
