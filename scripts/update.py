@@ -354,6 +354,13 @@ SAT_UNKNOWN_MAX = 60    # 兜底保留的卫视台上限：未测通的保留标
 SAT_OK_TAG = "（可用）"      # 实测抓流通过的台标注
 SAT_UNKNOWN_TAG = "（未实测）"  # 探测超时/连不上、兜底保留的台标注
 
+# 源里别名 → 统一台名：同一台多源合并，避免重复占坑
+SAT_ALIAS = {
+    "福建东南卫视": "东南卫视",
+    "农林卫视":     "中国农林卫视",
+    "南方卫视":     "大湾区卫视",
+}
+
 # ============ 电影 / 影视频道 ============
 # 官方 CDN 优先，拿不到才退到运营商持牌转播。已实测：
 #   · 央视 / CCTV-6 走 tv.cctv.com（在 build_cctv_live 里处理），官方
@@ -556,6 +563,7 @@ def build_satellite_live():
                 if len(parts) != 2:
                     continue
                 name, url = parts[0].strip(), parts[1].strip()
+                name = SAT_ALIAS.get(name, name)
                 if not url.startswith("http"):
                     continue
                 if not SAT_KEEP.match(name):
