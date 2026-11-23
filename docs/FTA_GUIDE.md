@@ -26,6 +26,15 @@
 | iptv-org · 按分类 | `https://iptv-org.github.io/iptv/categories/news.m3u`、`.../categories/sports.m3u` | 只要新闻 / 体育等单一类目 |
 | Free-TV 精选 | `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8` | 约 500 条、人工核验、HD 优先，适合起步 |
 
+### 本仓库内置的 FTA 入口（TVBox / FongMi 直接可用）
+
+| 入口 | 地址 | 说明 |
+| --- | --- | --- |
+| 公开FTA·国内 | `https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u` | iptv-org 中国切片镜像快照，随每周直播刷新更新 |
+| 公开FTA·新闻 | `https://iptv-org.github.io/iptv/categories/news.m3u` | iptv-org 官方新闻分类切片，直连官方源 |
+
+> 这两条已写入主配置 `output/tvbox_new.json` 的 `lives`，组名「公开FTA」；境外流受地域限制，部分台在境内可能打不开，属正常现象。
+
 ### 选源判断要点
 - **看最近提交日期**：仓库天天更新才健康；半年以上未更新的列表基本已过期。
 - **死链比例**：健康列表通常有 5%–15% 临时死链属正常；若一半以上打不开，是源本身过期，直接换掉。
@@ -94,3 +103,9 @@
 
 - 本仓库 `output/` 下的 TVBox 配置与直播清单，面向 FongMi / TVBox 客户端使用；本文档讲的是**通用本地播放器 + 开源公开频道**的合规用法，两者播放器内核不同，清单格式（M3U）互通。
 - 本仓库自动抓取的直播台以官方 CDN / 公开清单为准；第三方点播站的版权与稳定性由各自源方负责，使用时请自行甄别。
+
+### 点播（影视）说明
+
+- 开源公开生态**只有直播 FTA 索引，没有合规开源的公开影视片源库**：不存在可直接接入 TVBox、由社区免费公开授权的电影 / 电视剧片源或采集 API。
+- 现有配置里的点播站均为第三方聚合采集接口（Apple CMS 类），片源版权与稳定性由各自源方负责；LibreTV、EcoHub 等开源项目只是**自托管聚合壳**，自身不存片，仍需自行填入第三方采集接口。
+- 正规追剧、看电影请走持牌正版平台（有线电视、运营商 IPTV、正版视频 App）。
