@@ -1,1 +1,1 @@
-{"lives":[{"name":"抓取直播台","url":"https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt","group":"直播台"}]}
+{"lives":[{"name":"抓取直播台","url":"https://lsx9988.github.io/my-tvbox-cfg/output/cctv_live.txt","group":"直播台"},{"name":"公开FTA·国内","url":"https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u","group":"公开FTA"},{"name":"公开FTA·新闻","url":"https://iptv-org.github.io/iptv/categories/news.m3u","group":"公开FTA"}]}
