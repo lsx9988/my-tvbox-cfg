@@ -28,6 +28,7 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 
 - ⚡ **智能排序**：每天自动测速，快的排前面，死的删掉
 - 📺 **抓取直播台**：央视 16 台直连央视官网 CDN；卫视取自 GitHub 公开清单 + 运营商 IPTV 转播，逐条抓流验证
+- 🌐 **公开FTA频道**：内置 iptv-org 开源公开切片（国内镜像 + 新闻分类），免费公开信号，组名「公开FTA」
 - 🧹 **自动清洗**：剔网盘类、引流站、死链、类型冲突
 - 💬 **每日一句话**：首页提示随机显示一句话（无标题，每天不同，中等长度）
 - 🌙 **暗色壁纸**：默认深蓝渐变，文字清晰可读
@@ -52,6 +53,7 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 | `sites.json` | 纯点播站列表 |
 | `lives.json` | 纯直播源列表 |
 | `cctv_live.txt` | 抓取直播台：央视 + 卫视 + 影视（官网直连 + GitHub 公开清单 + IPTV 转播） |
+| `fta_cn.m3u` | 公开FTA·国内：iptv-org 中国切片镜像（开源免费公开信号） |
 | `status.json` | 聚合状态 |
 
 ---
@@ -60,6 +62,8 @@ https://lsx9988.github.io/my-tvbox-cfg/output/tvbox_new.json
 
 想在 VLC / 本地播放器里看**电视台免费公开（FTA）**的频道，可参考
 [《开源公开频道本地播放器合规用法指南》](docs/FTA_GUIDE.md)：选源口径、VLC 与客厅播放器导入步骤、EPG 配置、常见问题排查与合规自查清单。
+
+> 主配置已内置两条开源公开（FTA）直播切片，组名「公开FTA」。**点播影视没有合规开源公开片源**：现有点播站为第三方聚合采集接口，片源版权由源方负责；LibreTV / EcoHub 类开源项目只是自托管壳，不存片。正规追剧请走正版平台。
 
 ---
 
