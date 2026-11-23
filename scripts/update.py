@@ -45,6 +45,15 @@ USER_AGENT = "Mozilla/5.0"
 # 环境变量 REFRESH_LIVE=1 才真正重抓；工作流在周一（北京时间）自动设 1。
 REFRESH_LIVE = os.environ.get("REFRESH_LIVE", "1").strip() == "1"
 
+# 开源公开（FTA）频道：iptv-org 社区公开切片，Unlicense/CC0，只收录免费公开信号。
+# 国内相关切片镜像到本仓库 Pages（fta_cn.m3u），新闻切片直连官方源；境外流受地域限制，可用性随网络。
+FTA_BASE = "https://iptv-org.github.io/iptv"
+FTA_CN_FEED = f"{FTA_BASE}/countries/cn.m3u"
+FTA_LIVES = [
+    {"name": "公开FTA·国内", "url": "https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u", "group": "公开FTA"},
+    {"name": "公开FTA·新闻", "url": f"{FTA_BASE}/categories/news.m3u", "group": "公开FTA"},
+]
+
 SOURCE_MAX = 300      # 单个聚合源最多取多少站，防止异常源撑爆配置
 LITE_MAX = 80         # 精简版保留多少站
 
@@ -896,6 +905,23 @@ def build_cctv_live():
     }
 
 
+def build_fta_cn():
+    """拉取 iptv-org 中国公开切片，镜像落库 fta_cn.m3u；失败沿用旧文件。"""
+    path = os.path.join(OUTPUT_DIR, "fta_cn.m3u")
+    try:
+        r = requests.get(FTA_CN_FEED, timeout=20, headers={"User-Agent": USER_AGENT}, verify=False)
+        if r.status_code != 200 or "#EXTM3U" not in r.text:
+            print("[fta] 拉取中国切片失败 HTTP %d，沿用旧 fta_cn.m3u" % r.status_code)
+            return os.path.exists(path)
+        _atomic_write(path, r.text)
+        n = len([x for x in r.text.splitlines() if x.strip() and not x.startswith("#")])
+        print("[fta] fta_cn.m3u 已更新：%d 条频道" % n)
+        return True
+    except Exception as e:
+        print("[fta] 拉取异常 %s，沿用旧 fta_cn.m3u" % str(e)[:60])
+        return os.path.exists(path)
+
+
 def _live_alive(url):
     """直播源活性探测：HEAD 3 秒，4xx 直接判死，5xx 重试一次。"""
     try:
@@ -1112,7 +1138,7 @@ def clean_lives(lives, probe=True):
             dropped.append(("重复", name))
             continue
         # 活性探测：我们自己的国际频道跳过（它是我们生成的，必然通）
-        if probe and "lsx9988" not in url:
+        if probe and "lsx9988" not in url and "iptv-org.github.io" not in url:
             if not _live_alive(url):
                 dropped.append(("活性探测失败", name))
                 continue
@@ -1522,8 +1548,12 @@ def main():
             movie_cnt = len(_mov)
             globals()["_CCTV_PROFILE"] = (cctv_cnt, sat_cnt, ("-", 0), movie_cnt)
             print("[live] 沿用 %d 台 / %d 条线路" % (len(chans), len(rows)))
+        if REFRESH_LIVE:
+            build_fta_cn()
         if cctv:
             merged["lives"].append(cctv)
+        # 追加开源公开（FTA）直播切片入口
+        merged["lives"].extend(FTA_LIVES)
         # 清洗直播列表（保留刚加的央视条目）
         merged["lives"] = clean_lives(merged.get("lives", []))
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
@@ -1657,7 +1687,7 @@ def main():
         # 清理 output 目录里的旧文件，只保留白名单
         KEEP = {
             "tvbox_new.json", "tvbox_lite.json", "sites.json", "lives.json",
-            "cctv_live.txt", "status.json", "多仓订阅.json", "history.json",
+            "cctv_live.txt", "fta_cn.m3u", "status.json", "多仓订阅.json", "history.json",
         }
         removed = []
         for fn in os.listdir(OUTPUT_DIR):
