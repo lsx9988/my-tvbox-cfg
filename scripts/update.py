@@ -336,6 +336,13 @@ def _url_alive(url):
 # 29 号是 CCTV-9），但它的延迟最低，不改会一直排在第一位，点开就是错台。
 SAT_BLOCK_HOSTS = ("113.57.140.161:10081",)
 
+# 短期签名 / 绑定他人身份的线路：带 SecurityKey/timestamp/client_ip/encrypt/Authinfo/mac/msisdn 等参数，
+# 签名随时间或他人 IP 失效，隔天必然挂死，不收录进清单。
+SIG_EPHEMERAL = ("SecurityKey", "client_ip=", "timestamp=", "encrypt=", "Authinfo=", "mac=", "msisdn=", "SessionKey=", "wsSecret", "wsTime=", "sign=", "signature=", "expire=")
+
+def _is_ephemeral(url):
+    return any(k in url for k in SIG_EPHEMERAL)
+
 # 以下服务器逐条抓画面比对过台标，号表正确，排序时给最高优先级
 SAT_TRUST_HOSTS = ("45.192.97.170:8880", "58.56.162.102:4466", "120.40.39.246:352")
 
@@ -570,6 +577,8 @@ def build_satellite_live():
                     continue
                 if any(h in url for h in SAT_BLOCK_HOSTS):
                     continue
+                if _is_ephemeral(url):
+                    continue
                 raw.append((name, url))
         except Exception as e:
             print("[sat] 源异常: %s" % e)
@@ -734,6 +743,8 @@ def build_movie_live():
             if not std:
                 continue
             if any(b in url for b in SAT_BLOCK_HOSTS):
+                continue
+            if _is_ephemeral(url):
                 continue
             lst = raw.setdefault(std, [])
             if url not in lst:
