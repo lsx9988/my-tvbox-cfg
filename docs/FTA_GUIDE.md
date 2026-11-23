@@ -26,15 +26,6 @@
 | iptv-org · 按分类 | `https://iptv-org.github.io/iptv/categories/news.m3u`、`.../categories/sports.m3u` | 只要新闻 / 体育等单一类目 |
 | Free-TV 精选 | `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8` | 约 500 条、人工核验、HD 优先，适合起步 |
 
-### 本仓库内置的 FTA 入口（TVBox / FongMi 直接可用）
-
-| 入口 | 地址 | 说明 |
-| --- | --- | --- |
-| 公开FTA·国内 | `https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u` | iptv-org 中国切片镜像快照，随每周直播刷新更新 |
-| 公开FTA·新闻 | `https://iptv-org.github.io/iptv/categories/news.m3u` | iptv-org 官方新闻分类切片，直连官方源 |
-
-> 这两条已写入主配置 `output/tvbox_new.json` 的 `lives`，组名「公开FTA」；境外流受地域限制，部分台在境内可能打不开，属正常现象。
-
 ### 选源判断要点
 - **看最近提交日期**：仓库天天更新才健康；半年以上未更新的列表基本已过期。
 - **死链比例**：健康列表通常有 5%–15% 临时死链属正常；若一半以上打不开，是源本身过期，直接换掉。
