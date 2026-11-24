@@ -22,11 +22,18 @@
 | 源 | 列表地址 | 特点 |
 | --- | --- | --- |
 | iptv-org · 全量 | `https://iptv-org.github.io/iptv/index.m3u` | 170+ 国家、上万条 FTA，社区每日更新；全量较大、含少量临时死链 |
-| iptv-org · 按国家 | `https://iptv-org.github.io/iptv/countries/cn.m3u`（`cn` 换成 `gb` / `us` / `de` 等两位国家代码） | 按国家切片；注意 `cn` 切片是「与中国相关」而非「国内可播」，含大量境外华语 / 转载流，境内直连可播率偏低 |
+| iptv-org · 按国家 | `https://iptv-org.github.io/iptv/countries/cn.m3u`（`cn` 换成 `gb` / `us` / `de` 等两位国家代码） | **推荐优先用国家切片**，地域匹配好、死链少 |
 | iptv-org · 按分类 | `https://iptv-org.github.io/iptv/categories/news.m3u`、`.../categories/sports.m3u` | 只要新闻 / 体育等单一类目 |
 | Free-TV 精选 | `https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8` | 约 500 条、人工核验、HD 优先，适合起步 |
 
-> 实测提示：公开社区清单普遍依赖 IPv6、运营商内网或短期签名，跨运营商稳定性差；上表仅作本地播放器选源参考，能否播放以你当前网络实测为准。
+### 本仓库内置的 FTA 入口（TVBox / FongMi 直接可用）
+
+| 入口 | 地址 | 说明 |
+| --- | --- | --- |
+| 公开FTA·国内 | `https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u` | iptv-org 中国切片镜像快照，随每周直播刷新更新 |
+| 公开FTA·新闻 | `https://iptv-org.github.io/iptv/categories/news.m3u` | iptv-org 官方新闻分类切片，直连官方源 |
+
+> 这两条已写入主配置 `output/tvbox_new.json` 的 `lives`，组名「公开FTA」；境外流受地域限制，部分台在境内可能打不开，属正常现象。
 
 ### 选源判断要点
 - **看最近提交日期**：仓库天天更新才健康；半年以上未更新的列表基本已过期。
