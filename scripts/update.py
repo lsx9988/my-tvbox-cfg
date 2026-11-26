@@ -15,6 +15,7 @@ import json
 import os
 import random
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -65,7 +66,7 @@ UNKNOWN_MAX = 220           # 探测超时但保留的站点上限
 # 境外 runner 到国内源大面积超时，单条探测最坏 20 秒以上，负载高时会拖过 30 分钟
 # 被 workflow 超时直接杀掉，导致整轮产物全部丢失、仓库不更新。
 # 到点就停止剩余重探测，用「未实测」兜底保留，保证每轮都能收尾落盘。
-UPDATE_BUDGET_SEC = int(os.environ.get("UPDATE_BUDGET_SEC", "960"))  # 16 分钟
+UPDATE_BUDGET_SEC = int(os.environ.get("UPDATE_BUDGET_SEC", "780"))  # 13 分钟
 _T0 = time.time()
 
 
@@ -76,6 +77,21 @@ def _left_sec():
 def _tight(margin=60):
     """剩余预算不足 margin 秒返回 True，调用方跳过重探测、改走未实测兜底。"""
     return _left_sec() < margin
+
+
+_BUDGET_STOP = {"hit": False}
+
+
+def _stage(name, t0):
+    print("[time] %-10s %5.1fs（累计 %5.1fs）" % (name, time.time() - t0, time.time() - _T0), flush=True)
+
+
+class _BudgetStop(Exception):
+    """预算到点：中断当前探测，用已有结果收尾。"""
+
+
+def _on_budget(signum, frame):
+    raise _BudgetStop()
 
 TVBOX_KEYS = ("sites", "spiders", "lives", "store", "exts", "parses", "flags")
 
@@ -1482,7 +1498,11 @@ def build_download_page():
 
 
 def main():
-    print("[budget] 本轮预算 %d 秒，超时自动收尾" % UPDATE_BUDGET_SEC)
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+    print("[budget] 本轮预算 %d 秒，到点强制收尾" % UPDATE_BUDGET_SEC, flush=True)
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = json.load(f)
 
@@ -1550,10 +1570,22 @@ def main():
         # 清空所有旧直播源，只保留央视/卫视
         merged["lives"] = []
         cctv = None
+        _t_stage = time.time()
+        try:
+            signal.signal(signal.SIGALRM, _on_budget)
+            signal.alarm(max(60, int(UPDATE_BUDGET_SEC - (time.time() - _T0))))
+            print("[budget] 已设置 %d 秒硬上限，到点强制收尾" % max(60, int(UPDATE_BUDGET_SEC - (time.time() - _T0))))
+        except Exception:
+            pass
         live_path = os.path.join(OUTPUT_DIR, "cctv_live.txt")
         if REFRESH_LIVE:
             print("[live] 今天刷新直播源")
-            cctv = build_cctv_live()
+            try:
+                cctv = build_cctv_live()
+            except _BudgetStop:
+                _BUDGET_STOP["hit"] = True
+                print("[budget] 卫视探测到点中断，改用旧 cctv_live.txt")
+                cctv = None
         else:
             print("[live] 非刷新日，沿用现有直播清单")
         if not cctv and os.path.exists(live_path):
@@ -1590,10 +1622,34 @@ def main():
         if cctv:
             merged["lives"].append(cctv)
         # 公开 FTA 入口已按要求撤下，直播只保留「抓取直播台」
+        _stage("live+cctv", _t_stage)
+
         # 清洗直播列表（保留刚加的央视条目）
-        merged["lives"] = clean_lives(merged.get("lives", []))
+        try:
+            merged["lives"] = clean_lives(merged.get("lives", []))
+        except _BudgetStop:
+            _BUDGET_STOP["hit"] = True
+            print("[budget] 直播清洗到点，跳过")
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
-        merged["sites"], site_speed = clean_sites(merged.get("sites", []))
+        try:
+            merged["sites"], site_speed = clean_sites(merged.get("sites", []))
+        except _BudgetStop:
+            _BUDGET_STOP["hit"] = True
+            print("[budget] 点播探测到点，沿用上次站点清单")
+            site_speed = []
+            try:
+                with open(os.path.join(OUTPUT_DIR, "sites.json"), "r", encoding="utf-8") as _f:
+                    _old_sites = json.load(_f).get("sites") or []
+                if _old_sites:
+                    merged["sites"] = _old_sites
+                    print("[budget] 沿用上次 %d 个点播站" % len(_old_sites))
+            except Exception:
+                pass
+        finally:
+            try:
+                signal.alarm(0)
+            except Exception:
+                pass
         # 强制壁纸：深蓝渐变暗色图，保证文字可读
         merged["wallpaper"] = "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1920&q=80"
 
@@ -1657,7 +1713,7 @@ def main():
         prof = globals().get("_CCTV_PROFILE")
         if prof and prof[1]:
             tail = f"{prof[0]}央视+{prof[1]}卫视"
-        if len(prof) > 3 and prof[3]:
+        if prof and len(prof) > 3 and prof[3]:
             tail += f"+{prof[3]}电影"
         elif prof:
             tail = f"{prof[0]}央视台"
@@ -1910,6 +1966,14 @@ def main():
         build_download_page()
     except Exception as e:
         print("[dl] 生成失败：%s" % e)
+
+    if _BUDGET_STOP["hit"]:
+        print("[budget] 已收尾并落盘，强制退出避免残留探测线程拖住 job", flush=True)
+        try:
+            sys.stdout.flush()
+        except Exception:
+            pass
+        os._exit(0)
 
 
 if __name__ == "__main__":
