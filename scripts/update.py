@@ -49,10 +49,8 @@ REFRESH_LIVE = os.environ.get("REFRESH_LIVE", "1").strip() == "1"
 # 国内相关切片镜像到本仓库 Pages（fta_cn.m3u），新闻切片直连官方源；境外流受地域限制，可用性随网络。
 FTA_BASE = "https://iptv-org.github.io/iptv"
 FTA_CN_FEED = f"{FTA_BASE}/countries/cn.m3u"
-FTA_LIVES = [
-    {"name": "公开FTA·国内", "url": "https://lsx9988.github.io/my-tvbox-cfg/output/fta_cn.m3u", "group": "公开FTA"},
-    {"name": "公开FTA·新闻", "url": f"{FTA_BASE}/categories/news.m3u", "group": "公开FTA"},
-]
+# 2026-11-26 按要求撤下「公开FTA·国内」「公开FTA·新闻」，直播只保留抓取台
+FTA_LIVES = []
 
 SOURCE_MAX = 300      # 单个聚合源最多取多少站，防止异常源撑爆配置
 LITE_MAX = 80         # 精简版保留多少站
@@ -62,6 +60,22 @@ MAX_RETRIES = 2
 SITE_PROBE_TIMEOUT = 6      # 单次探测超时（境外机房到国内 CDN 慢，4 秒会误杀）
 SITE_PROBE_WORKERS = 24     # 并发探测线程数
 UNKNOWN_MAX = 220           # 探测超时但保留的站点上限
+
+# ---- 全局耗时预算 ----
+# 境外 runner 到国内源大面积超时，单条探测最坏 20 秒以上，负载高时会拖过 30 分钟
+# 被 workflow 超时直接杀掉，导致整轮产物全部丢失、仓库不更新。
+# 到点就停止剩余重探测，用「未实测」兜底保留，保证每轮都能收尾落盘。
+UPDATE_BUDGET_SEC = int(os.environ.get("UPDATE_BUDGET_SEC", "1020"))  # 17 分钟
+_T0 = time.time()
+
+
+def _left_sec():
+    return UPDATE_BUDGET_SEC - (time.time() - _T0)
+
+
+def _tight(margin=60):
+    """剩余预算不足 margin 秒返回 True，调用方跳过重探测、改走未实测兜底。"""
+    return _left_sec() < margin
 
 TVBOX_KEYS = ("sites", "spiders", "lives", "store", "exts", "parses", "flags")
 
@@ -591,6 +605,9 @@ def build_satellite_live():
     def _probe(pair):
         """测一个台的所有候选：实测可播的进 good；测不通的进 backup 兜底保留。"""
         n, urls = pair
+        if _tight(120):
+            # 预算不够：直接按未实测兜底保留首条线路，宁可标注也不丢台
+            return (n, [(99999, urls[0])], False) if urls else None
         good = []
         backup = []
         for u in urls:
@@ -762,6 +779,8 @@ def build_movie_live():
 
     def _probe(item):
         std, urls = item
+        if _tight(120):
+            return (std, [(urls[0], 9999)], True) if urls else None
         good, unknown = [], []
         for u in urls[:8]:
             ok, ms, _n, why = _cctv_stream_ok(u, timeout=6)
@@ -810,6 +829,8 @@ def build_cctv_live():
 
     def _probe_one(item):
         name, code = item
+        if _tight(120):
+            return ("miss", name, code, [], 0)
         why = ""
         urls = []          # 这个频道所有能播的线路，越多越稳
         for cdn in CCTV_CDN:
@@ -1057,10 +1078,16 @@ def clean_sites(sites, probe=True):
     # 并发探测：串行 400+ 站 × 6 秒会跑成十几分钟
     if probe_list:
         from concurrent.futures import ThreadPoolExecutor
+        budget_cut = []
+
+        def _probe_site(it):
+            if _tight(90):
+                budget_cut.append(1)
+                return (it[0], it[1], ("unknown", 99999))
+            return (it[0], it[1], _site_alive((it[1].get("api") or "").strip()))
+
         with ThreadPoolExecutor(max_workers=SITE_PROBE_WORKERS) as ex:
-            results = list(ex.map(
-                lambda it: (it[0], it[1], _site_alive((it[1].get("api") or "").strip())),
-                probe_list))
+            results = list(ex.map(_probe_site, probe_list))
         for idx, s, (state, dt) in results:
             if state == "ok":
                 direct.append((dt, idx, s))
@@ -1085,9 +1112,10 @@ def clean_sites(sites, probe=True):
         print(f"   指纹去重：合并 {_dup_n} 条重复接口")
     direct = _dedup
     unknown.sort(key=lambda x: x[0])
-    if len(unknown) > UNKNOWN_MAX:
-        dropped_dead.extend([s.get("name", "?") for _, s in unknown[UNKNOWN_MAX:]])
-        unknown = unknown[:UNKNOWN_MAX]
+    _cap = len(unknown) if budget_cut else UNKNOWN_MAX
+    if len(unknown) > _cap:
+        dropped_dead.extend([s.get("name", "?") for _, s in unknown[_cap:]])
+        unknown = unknown[:_cap]
 
     out = []
     speed_data = []  # (name, latency) 给 README 用，只记真测通的
@@ -1444,6 +1472,7 @@ def build_download_page():
 
 
 def main():
+    print("[budget] 本轮预算 %d 秒，超时自动收尾" % UPDATE_BUDGET_SEC)
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         cfg = json.load(f)
 
@@ -1548,12 +1577,9 @@ def main():
             movie_cnt = len(_mov)
             globals()["_CCTV_PROFILE"] = (cctv_cnt, sat_cnt, ("-", 0), movie_cnt)
             print("[live] 沿用 %d 台 / %d 条线路" % (len(chans), len(rows)))
-        if REFRESH_LIVE:
-            build_fta_cn()
         if cctv:
             merged["lives"].append(cctv)
-        # 追加开源公开（FTA）直播切片入口
-        merged["lives"].extend(FTA_LIVES)
+        # 公开 FTA 入口已按要求撤下，直播只保留「抓取直播台」
         # 清洗直播列表（保留刚加的央视条目）
         merged["lives"] = clean_lives(merged.get("lives", []))
         # 清洗点播站点（只剔死 API，JS 爬虫保留）
@@ -1687,7 +1713,7 @@ def main():
         # 清理 output 目录里的旧文件，只保留白名单
         KEEP = {
             "tvbox_new.json", "tvbox_lite.json", "sites.json", "lives.json",
-            "cctv_live.txt", "fta_cn.m3u", "status.json", "多仓订阅.json", "history.json",
+            "cctv_live.txt", "status.json", "多仓订阅.json", "history.json",
         }
         removed = []
         for fn in os.listdir(OUTPUT_DIR):
