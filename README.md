@@ -1,9 +1,9 @@
 # 🎬 My TVBox Config
 
 > 个人自用 FongMi / TVBox 影视配置自动聚合仓库
-> 每天凌晨 3 点自动抓取公开源、测速排序、剔死链、发布
+> 每天 08:00 / 20:00（北京时间）自动抓取公开源、测速排序、剔死链、发布
 
-![Update](https://img.shields.io/badge/update-daily%2003:00-blue?logo=githubactions)
+![Update](https://img.shields.io/badge/update-daily%2008%3A00%2F20%3A00-blue?logo=githubactions)
 ![Sites](https://img.shields.io/badge/sites-684%20%E7%AB%99-green)
 ![Live](https://img.shields.io/badge/live-70%20%E5%8F%B0-orange)
 
