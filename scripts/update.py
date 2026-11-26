@@ -65,7 +65,7 @@ UNKNOWN_MAX = 220           # 探测超时但保留的站点上限
 # 境外 runner 到国内源大面积超时，单条探测最坏 20 秒以上，负载高时会拖过 30 分钟
 # 被 workflow 超时直接杀掉，导致整轮产物全部丢失、仓库不更新。
 # 到点就停止剩余重探测，用「未实测」兜底保留，保证每轮都能收尾落盘。
-UPDATE_BUDGET_SEC = int(os.environ.get("UPDATE_BUDGET_SEC", "1020"))  # 17 分钟
+UPDATE_BUDGET_SEC = int(os.environ.get("UPDATE_BUDGET_SEC", "960"))  # 16 分钟
 _T0 = time.time()
 
 
@@ -605,12 +605,16 @@ def build_satellite_live():
     def _probe(pair):
         """测一个台的所有候选：实测可播的进 good；测不通的进 backup 兜底保留。"""
         n, urls = pair
-        if _tight(120):
+        if _tight(180):
             # 预算不够：直接按未实测兜底保留首条线路，宁可标注也不丢台
             return (n, [(99999, urls[0])], False) if urls else None
         good = []
         backup = []
-        for u in urls:
+        for i, u in enumerate(urls):
+            if _tight(180):
+                # 预算不足：本台剩下的候选不再测，直接进兜底，保证不丢台
+                backup.extend(urls[i:])
+                break
             ok, ms, why = _sat_ok(u)
             if ok:
                 w, hh = _stream_res(u) or (0, 0)
@@ -783,6 +787,10 @@ def build_movie_live():
             return (std, [(urls[0], 9999)], True) if urls else None
         good, unknown = [], []
         for u in urls[:8]:
+            if _tight(180):
+                if any(h in u for h in MOVIE_OFFICIAL_HOSTS) or "miguvideo" in u:
+                    unknown.append((0, 9999, u))
+                continue
             ok, ms, _n, why = _cctv_stream_ok(u, timeout=6)
             if ok and ms <= MOVIE_MAX_MS:
                 good.append((_tier(u), ms, u))
@@ -834,6 +842,8 @@ def build_cctv_live():
         why = ""
         urls = []          # 这个频道所有能播的线路，越多越稳
         for cdn in CCTV_CDN:
+            if _tight(150):
+                break
             url = cdn.format(ch=code)
             ok, ms, n, why = _cctv_stream_ok(url)
             if ok:
@@ -1081,7 +1091,7 @@ def clean_sites(sites, probe=True):
         budget_cut = []
 
         def _probe_site(it):
-            if _tight(90):
+            if _tight(150):
                 budget_cut.append(1)
                 return (it[0], it[1], ("unknown", 99999))
             return (it[0], it[1], _site_alive((it[1].get("api") or "").strip()))
