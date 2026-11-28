@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-27 00:56:32",
+  "updated_at": "2026-11-28 13:52:58",
   "sources": [
     {
       "id": "wangerxiao",
@@ -40,8 +40,8 @@
       "id": "shiguang",
       "name": "拾光",
       "ok": true,
-      "cached": false,
-      "used_url": "https://jiekou.netlify.app/svip.json"
+      "cached": true,
+      "error": null
     },
     {
       "id": "tinghao",
